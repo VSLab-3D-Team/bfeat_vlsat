@@ -30,7 +30,7 @@
     "USE_GCN": true,
     "USE_RGB": false,
     "USE_NORMAL": false,
-    "use_2d_feats": false,
+    "use_2d_feats": true,
     "USE_CONTEXT": true,
     "USE_GCN_EDGE": true,
     "USE_REL_LOSS": true,
