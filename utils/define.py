@@ -1,4 +1,4 @@
-ROOT_PATH = '/data/spoiuy3/vlsat'
+ROOT_PATH = '/data/hkh7710/vlsat'
 DATA_PATH = '/data2/local_datasets/3RScan/data/3RScan'
 # SCANNET_DATA_PATH = '/path/to/scannet' 
 # SCANNET_SPLIT_TRAIN = '/path/to/scannet/Tasks/Benchmarkscannetv2_train.txt'
