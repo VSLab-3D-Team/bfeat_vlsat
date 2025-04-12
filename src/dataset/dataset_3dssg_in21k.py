@@ -292,7 +292,7 @@ class SSGDatasetGraph(data.Dataset):
             obj_pointset[:,:3] = self.zero_mean(obj_pointset[:,:3])
             obj_points[i] = obj_pointset
 
-            obj_2d_feats[i] = np.load(f'/data/wangziqin/project/CVPR2023-VLSAT/data/3RScan/{scene_id}/multi_view/instance_{instance_id}_class_{instance_name}_view_origin_vitb32_21k_mean.npy')
+            obj_2d_feats[i] = np.load(f'/data2/local_datasets/3RScan/data/3RScan/{scene_id}/multi_view/instance_{instance_id}_class_{instance_name}_view_origin_vitb32_21k_mean.npy')
         
         # set gt label for relation
         len_object = len(nodes)
