@@ -514,7 +514,7 @@ if __name__ == '__main__':
     #                             # 'leaning against','part of','build in','standing in','lying in','hanging in']
     #     target_relationships += ['supported by', 'attached to','standing on','hanging on','connected to','part of','build in']
     # target_relationships.append(define.NAME_SAME_PART)
-    target_relationships = sorted(util.read_classes('/data/hkh/sy/vlsat/data/3DSSG_Sub/relationships.txt'))
+    target_relationships = sorted(util.read_classes('/data/hkh7710/sy/vlsat/data/3DSSG_Sub/relationships.txt'))
     
     target_scan=[]
     if args.target_scan != '':
