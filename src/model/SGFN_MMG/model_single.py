@@ -24,7 +24,7 @@ class Mmgnet(BaseModel):
         with_bn = mconfig.WITH_BN
 
         dim_point = 3
-        if not mconfig.USE_RGB:
+        if mconfig.USE_RGB:
             dim_point +=3
         if mconfig.USE_NORMAL:
             dim_point +=3
