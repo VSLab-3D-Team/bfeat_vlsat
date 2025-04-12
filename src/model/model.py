@@ -408,3 +408,5 @@ class MMGNet():
         object_mean_1 = np.mean(object_mean_1)
         object_mean_5 = np.mean(object_mean_5)
         object_mean_10 = np.mean(object_mean_10)
+        
+        return object_mean_1 * 100, object_mean_5 * 100, object_mean_10 * 100
