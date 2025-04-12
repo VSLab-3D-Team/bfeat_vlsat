@@ -26,7 +26,7 @@ class MMGNet():
         
         ''' Build dataset '''
         dataset = None
-        if config.MODE  == 'train':
+        if config.MODE  == 'train' or config.MODE  == 'eval':
             if config.VERBOSE: print('build train dataset')
             self.dataset_train = build_dataset(self.config,split_type='train_scans', shuffle_objs=True,
                                                multi_rel_outputs=mconfig.multi_rel_outputs,
@@ -34,7 +34,7 @@ class MMGNet():
                                                use_normal=mconfig.USE_NORMAL)
             self.dataset_train.__getitem__(0)
                 
-        if config.MODE  == 'train' or config.MODE  == 'trace':
+        if config.MODE  == 'train' or config.MODE  == 'trace' or config.MODE  == 'eval':
             if config.VERBOSE: print('build valid dataset')
             self.dataset_valid = build_dataset(self.config,split_type='validation_scans', shuffle_objs=False, 
                                       multi_rel_outputs=mconfig.multi_rel_outputs,
