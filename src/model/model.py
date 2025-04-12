@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
-from src.model.SGFN_MMG.model import Mmgnet
+from src.model.SGFN_MMG.model_single import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 
