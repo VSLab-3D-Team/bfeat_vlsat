@@ -14,6 +14,7 @@ from src.model.model_utils.network_PointNet import (PointNetfeat,
 from src.utils.eva_utils_acc import (evaluate_topk_object,
                                  evaluate_topk_predicate,
                                  evaluate_triplet_topk, get_gt)
+from src.utils.eval_utils_recall import *
 from utils import op_utils
 
 
@@ -467,6 +468,10 @@ class Mmgnet(BaseModel):
         top_k_obj_2d = evaluate_topk_object(obj_logits_2d.detach().cpu(), gt_cls, topk=11)
         top_k_rel_2d = evaluate_topk_predicate(rel_cls_2d.detach().cpu(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
         
+        sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='triplet')
+        predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='rels')
+        
+        
         if use_triplet:
             top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
             top_k_2d_triplet, _, _, _, _ = evaluate_triplet_topk(obj_logits_2d.detach().cpu(), rel_cls_2d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
@@ -477,7 +482,7 @@ class Mmgnet(BaseModel):
             obj_scores = None
             rel_scores = None
 
-        return top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, top_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores
+        return top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, top_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w
  
     
     def backward(self, loss):
