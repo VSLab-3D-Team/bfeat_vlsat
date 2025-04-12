@@ -194,7 +194,7 @@ class MMGNet():
         
         print('===   start evaluation   ===')
         self.model.eval()
-        topk_obj_list, topk_rel_list, topk_triplet_list, cls_matrix_list, edge_feature_list = np.array([]), np.array([]), np.array([]), [], []
+        topk_obj_list, topk_rel_list, topk_triplet_list, gt_obj_list, sgcls_recall_w_list, predcls_recall_w_list, cls_matrix_list, edge_feature_list = np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), [], []
         sub_scores_list, obj_scores_list, rel_scores_list = [], [], []
         topk_obj_2d_list, topk_rel_2d_list, topk_triplet_2d_list = np.array([]), np.array([]), np.array([])
 
@@ -207,7 +207,7 @@ class MMGNet():
                 #     top_k_obj, top_k_rel, tok_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores \
                 #         = self.model.process_val(obj_points, gt_class, descriptor, gt_rel_cls, edge_indices, use_triplet=True)
                 # else:
-                top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores \
+                top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w \
                     = self.model.process_val(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, use_triplet=True)
                         
             ''' calculate metrics '''
@@ -217,6 +217,10 @@ class MMGNet():
             topk_rel_2d_list = np.concatenate((topk_rel_2d_list, top_k_rel_2d))
             topk_triplet_list = np.concatenate((topk_triplet_list, tok_k_triplet))
             topk_triplet_2d_list = np.concatenate((topk_triplet_2d_list, top_k_2d_triplet))
+            gt_obj_list = np.concatenate((gt_obj_list, gt_class.cpu().numpy()))
+            sgcls_recall_w_list = np.concatenate((sgcls_recall_w_list, sgcls_recall_w))
+            predcls_recall_w_list = np.concatenate((predcls_recall_w_list, predcls_recall_w))
+
             if cls_matrix is not None:
                 cls_matrix_list.extend(cls_matrix)
                 sub_scores_list.extend(sub_scores)
@@ -224,22 +228,22 @@ class MMGNet():
                 rel_scores_list.extend(rel_scores)
 
             
-            logs = [("Acc@1/obj_cls_acc", (topk_obj_list <= 1).sum() * 100 / len(topk_obj_list)),
-                    ("Acc@1/obj_cls_2d_acc", (topk_obj_2d_list <= 1).sum() * 100 / len(topk_obj_2d_list)),
-                    ("Acc@5/obj_cls_acc", (topk_obj_list <= 5).sum() * 100 / len(topk_obj_list)),
-                    ("Acc@5/obj_cls_2d_acc", (topk_obj_2d_list <= 5).sum() * 100 / len(topk_obj_2d_list)),
-                    ("Acc@10/obj_cls_acc", (topk_obj_list <= 10).sum() * 100 / len(topk_obj_list)),
-                    ("Acc@10/obj_cls_2d_acc", (topk_obj_2d_list <= 10).sum() * 100 / len(topk_obj_2d_list)),
-                    ("Acc@1/rel_cls_acc", (topk_rel_list <= 1).sum() * 100 / len(topk_rel_list)),
-                    ("Acc@1/rel_cls_2d_acc", (topk_rel_2d_list <= 1).sum() * 100 / len(topk_rel_2d_list)),
-                    ("Acc@3/rel_cls_acc", (topk_rel_list <= 3).sum() * 100 / len(topk_rel_list)),
-                    ("Acc@3/rel_cls_2d_acc", (topk_rel_2d_list <= 3).sum() * 100 / len(topk_rel_2d_list)),
-                    ("Acc@5/rel_cls_acc", (topk_rel_list <= 5).sum() * 100 / len(topk_rel_list)),
-                    ("Acc@5/rel_cls_2d_acc", (topk_rel_2d_list <= 5).sum() * 100 / len(topk_rel_2d_list)),
-                    ("Acc@50/triplet_acc", (topk_triplet_list <= 50).sum() * 100 / len(topk_triplet_list)),
-                    ("Acc@50/triplet_2d_acc", (topk_triplet_2d_list <= 50).sum() * 100 / len(topk_triplet_2d_list)),
-                    ("Acc@100/triplet_acc", (topk_triplet_list <= 100).sum() * 100 / len(topk_triplet_list)),
-                    ("Acc@100/triplet_2d_acc", (topk_triplet_2d_list <= 100).sum() * 100 / len(topk_triplet_2d_list)),]
+            logs = [("Acc@1/obj", (topk_obj_list <= 1).sum() * 100 / len(topk_obj_list)),
+                    ("Acc@1/obj_2d", (topk_obj_2d_list <= 1).sum() * 100 / len(topk_obj_2d_list)),
+                    ("Acc@5/obj", (topk_obj_list <= 5).sum() * 100 / len(topk_obj_list)),
+                    ("Acc@5/obj_2d", (topk_obj_2d_list <= 5).sum() * 100 / len(topk_obj_2d_list)),
+                    ("Acc@10/obj", (topk_obj_list <= 10).sum() * 100 / len(topk_obj_list)),
+                    ("Acc@10/obj_2d", (topk_obj_2d_list <= 10).sum() * 100 / len(topk_obj_2d_list)),
+                    ("Acc@1/rel", (topk_rel_list <= 1).sum() * 100 / len(topk_rel_list)),
+                    ("Acc@1/rel_2d", (topk_rel_2d_list <= 1).sum() * 100 / len(topk_rel_2d_list)),
+                    ("Acc@3/rel", (topk_rel_list <= 3).sum() * 100 / len(topk_rel_list)),
+                    ("Acc@3/rel_2d", (topk_rel_2d_list <= 3).sum() * 100 / len(topk_rel_2d_list)),
+                    ("Acc@5/rel", (topk_rel_list <= 5).sum() * 100 / len(topk_rel_list)),
+                    ("Acc@5/rel_2d", (topk_rel_2d_list <= 5).sum() * 100 / len(topk_rel_2d_list)),
+                    ("Acc@50/triplet", (topk_triplet_list <= 50).sum() * 100 / len(topk_triplet_list)),
+                    ("Acc@50/triplet_2d", (topk_triplet_2d_list <= 50).sum() * 100 / len(topk_triplet_2d_list)),
+                    ("Acc@100/triplet", (topk_triplet_list <= 100).sum() * 100 / len(topk_triplet_list)),
+                    ("Acc@100/triplet_2d", (topk_triplet_2d_list <= 100).sum() * 100 / len(topk_triplet_2d_list)),]
 
             progbar.add(1, values=logs if self.config.VERBOSE else [x for x in logs if not x[0].startswith('Loss')])
 
@@ -284,72 +288,67 @@ class MMGNet():
 
         rel_acc_mean_1, rel_acc_mean_3, rel_acc_mean_5 = self.compute_mean_predicate(cls_matrix_list, topk_rel_list)
         rel_acc_2d_mean_1, rel_acc_2d_mean_3, rel_acc_2d_mean_5 = self.compute_mean_predicate(cls_matrix_list, topk_rel_2d_list)
-
+        obj_acc_mean_1, obj_acc_mean_5, obj_acc_mean_10 = self.compute_mean_object(gt_obj_list, topk_obj_list)
+        sgcls_recall_w=np.mean(sgcls_recall_w_list, axis=0)
+        predcls_recall_w=np.mean(predcls_recall_w_list, axis=0) 
      
-        print(f"Eval: 3d obj Acc@1  : {obj_acc_1}", file=f_in)   
-        print(f"Eval: 2d obj Acc@1: {obj_acc_2d_1}", file=f_in)
-        print(f"Eval: 3d obj Acc@5  : {obj_acc_5}", file=f_in) 
-        print(f"Eval: 2d obj Acc@5: {obj_acc_2d_5}", file=f_in)  
-        print(f"Eval: 3d obj Acc@10 : {obj_acc_10}", file=f_in)  
-        print(f"Eval: 2d obj Acc@10: {obj_acc_2d_10}", file=f_in)
-        print(f"Eval: 3d rel Acc@1  : {rel_acc_1}", file=f_in) 
-        print(f"Eval: 3d mean rel Acc@1  : {rel_acc_mean_1}", file=f_in)   
-        print(f"Eval: 2d rel Acc@1: {rel_acc_2d_1}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@1: {rel_acc_2d_mean_1}", file=f_in)
-        print(f"Eval: 3d rel Acc@3  : {rel_acc_3}", file=f_in)   
-        print(f"Eval: 3d mean rel Acc@3  : {rel_acc_mean_3}", file=f_in) 
-        print(f"Eval: 2d rel Acc@3: {rel_acc_2d_3}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@3: {rel_acc_2d_mean_3}", file=f_in)
-        print(f"Eval: 3d rel Acc@5  : {rel_acc_5}", file=f_in)
-        print(f"Eval: 3d mean rel Acc@5  : {rel_acc_mean_5}", file=f_in) 
-        print(f"Eval: 2d rel Acc@5: {rel_acc_2d_5}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@5: {rel_acc_2d_mean_5}", file=f_in)
-        print(f"Eval: 3d triplet Acc@50 : {triplet_acc_50}", file=f_in)
-        print(f"Eval: 2d triplet Acc@50: {triplet_acc_2d_50}", file=f_in)
-        print(f"Eval: 3d triplet Acc@100 : {triplet_acc_100}", file=f_in)
-        print(f"Eval: 2d triplet Acc@100: {triplet_acc_2d_100}", file=f_in)
-        print(f"Eval: 3d mean recall@50 : {mean_recall[0]}", file=f_in)
-        print(f"Eval: 2d mean recall@50: {mean_recall_2d[0]}", file=f_in)
-        print(f"Eval: 3d mean recall@100 : {mean_recall[1]}", file=f_in)
-        print(f"Eval: 2d mean recall@100: {mean_recall_2d[1]}", file=f_in)
-        print(f"Eval: 3d zero-shot recall@50 : {zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d zero-shot recall@100: {zero_shot_recall[1]}", file=f_in)
-        print(f"Eval: 3d non-zero-shot recall@50 : {non_zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d non-zero-shot recall@100: {non_zero_shot_recall[1]}", file=f_in)
-        print(f"Eval: 3d all-zero-shot recall@50 : {all_zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d all-zero-shot recall@100: {all_zero_shot_recall[1]}", file=f_in)
-
-
-
+        print(f"Eval: Recall@1_obj : {obj_acc_1}", file=f_in)   
+        print(f"Eval: Recall@5_obj : {obj_acc_5}", file=f_in) 
+        print(f"Eval: Recall@10_obj: {obj_acc_10}", file=f_in)  
+        print(f"Eval: Recall@1_pred: {rel_acc_1}", file=f_in) 
+        print(f"Eval: Recall@3_pred: {rel_acc_3}", file=f_in)   
+        print(f"Eval: Recall@5_pred: {rel_acc_5}", file=f_in)
+        print(f"Eval: Recall@50_triplet : {triplet_acc_50}", file=f_in)
+        print(f"Eval: Recall@100_triplet: {triplet_acc_100}", file=f_in)
+        print("--------------------------------------------------", file=f_in)
+        print(f"Eval: mRecall@1_obj  : {obj_acc_mean_1}", file=f_in)
+        print(f"Eval: mRecall@5_obj  : {obj_acc_mean_5}", file=f_in)
+        print(f"Eval: mRecallA@10_obj: {obj_acc_mean_10}", file=f_in)
+        print(f"Eval: mRecall@1_pred : {rel_acc_mean_1}", file=f_in)   
+        print(f"Eval: mRecall@3_pred : {rel_acc_mean_3}", file=f_in) 
+        print(f"Eval: mRecallc@5_pred: {rel_acc_mean_5}", file=f_in) 
+        print(f"Eval: mRecall@50_triplet : {mean_recall[0]}", file=f_in)
+        print(f"Eval: mRecall@100_triplet: {mean_recall[1]}", file=f_in)
+        print("--------------------------------------------------", file=f_in)
+        print(f"Eval: SGcls_w@20   : {sgcls_recall_w[0]}", file=f_in)
+        print(f"Eval: SGcls_w@50   : {sgcls_recall_w[1]}", file=f_in)
+        print(f"Eval: SGcls_w@100  : {sgcls_recall_w[2]}", file=f_in)
+        print(f"Eval: Predcls_w@20 : {predcls_recall_w[0]}", file=f_in)
+        print(f"Eval: Predcls_w@50 : {predcls_recall_w[1]}", file=f_in)
+        print(f"Eval: Predcls_w@100: {predcls_recall_w[2]}", file=f_in)
+        print(f"Eval: zero-shot recall@50 : {zero_shot_recall[0]}", file=f_in)
+        print(f"Eval: zero-shot recall@100: {zero_shot_recall[1]}", file=f_in)
+        print(f"Eval: non-zero-shot recall@50 : {non_zero_shot_recall[0]}", file=f_in)
+        print(f"Eval: non-zero-shot recall@100: {non_zero_shot_recall[1]}", file=f_in)
+        print(f"Eval: all-zero-shot recall@50 : {all_zero_shot_recall[0]}", file=f_in)
+        print(f"Eval: all-zero-shot recall@100: {all_zero_shot_recall[1]}", file=f_in)
+        
+        
         if self.model.config.EVAL:
             f_in.close()
         
-        logs = [("Acc@1/obj_cls_acc", obj_acc_1),
-                ("Acc@1/obj_2d_cls_acc", obj_acc_2d_1),
-                ("Acc@5/obj_cls_acc", obj_acc_5),
-                ("Acc@5/obj_2d_cls_acc", obj_acc_2d_5),
-                ("Acc@10/obj_cls_acc", obj_acc_10),
-                ("Acc@10/obj_2d_cls_acc", obj_acc_2d_10),
-                ("Acc@1/rel_cls_acc", rel_acc_1),
-                ("Acc@1/rel_cls_acc_mean", rel_acc_mean_1),
-                ("Acc@1/rel_2d_cls_acc", rel_acc_2d_1),
-                ("Acc@1/rel_2d_cls_acc_mean", rel_acc_2d_mean_1),
-                ("Acc@3/rel_cls_acc", rel_acc_3),
-                ("Acc@3/rel_cls_acc_mean", rel_acc_mean_3),
-                ("Acc@3/rel_2d_cls_acc", rel_acc_2d_3),
-                ("Acc@3/rel_2d_cls_acc_mean", rel_acc_2d_mean_3),
-                ("Acc@5/rel_cls_acc", rel_acc_5),
-                ("Acc@5/rel_cls_acc_mean", rel_acc_mean_5),
-                ("Acc@5/rel_2d_cls_acc", rel_acc_2d_5),
-                ("Acc@5/rel_2d_cls_acc_mean", rel_acc_2d_mean_5),
-                ("Acc@50/triplet_acc", triplet_acc_50),
-                ("Acc@50/triplet_2d_acc", triplet_acc_2d_50),
-                ("Acc@100/triplet_acc", triplet_acc_100),
-                ("Acc@100/triplet_2d_acc", triplet_acc_2d_100),
-                ("mean_recall@50", mean_recall[0]),
-                ("mean_2d_recall@50", mean_recall_2d[0]),
-                ("mean_recall@100", mean_recall[1]),
-                ("mean_2d_recall@100", mean_recall_2d[1]),
+        logs = [("Recall@1_obj", obj_acc_1),
+                ("Recall@5_obj", obj_acc_5),
+                ("Recall@10_obj", obj_acc_10),
+                ("Recall@1_pred", rel_acc_1),
+                ("Recall@3_pred", rel_acc_3),
+                ("Recall@5_pred", rel_acc_5),
+                ("Recall@50_triplet", triplet_acc_50),
+                ("Recall@100_triplet", triplet_acc_100),
+                ("mRecall@1_obj", obj_acc_mean_1),
+                ("mRecall@5_obj", obj_acc_mean_5),
+                ("mRecall@10_obj", obj_acc_mean_10),
+                ("mRecall@1_pred", rel_acc_mean_1),
+                ("mRecall@3_pred", rel_acc_mean_3),
+                ("mRecall@5_pred", rel_acc_mean_5),
+                ("mRecall@50_triplet", mean_recall[0]),
+                ("mRecall@100_triplet", mean_recall[1]),
+                ("SGcls_w@20", sgcls_recall_w[0]),
+                ("SGcls_w@50", sgcls_recall_w[1]),
+                ("SGcls_w@100", sgcls_recall_w[2]),
+                ("Predcls_w@20", predcls_recall_w[0]),
+                ("Predcls_w@50", predcls_recall_w[1]),
+                ("Predcls_w@100", predcls_recall_w[2]),
                 ("zero_shot_recall@50", zero_shot_recall[0]),
                 ("zero_shot_recall@100", zero_shot_recall[1]),
                 ("non_zero_shot_recall@50", non_zero_shot_recall[0]),
@@ -386,3 +385,26 @@ class MMGNet():
         predicate_mean_5 = np.mean(predicate_mean_5)
 
         return predicate_mean_1 * 100, predicate_mean_3 * 100, predicate_mean_5 * 100
+
+    def compute_mean_object(self, gt_obj_label, topk_obj_list):
+        cls_dict = {}
+        for i in range(160):
+            cls_dict[i] = []
+        
+        for idx, j in enumerate(gt_obj_label):
+            cls_dict[j].append(topk_obj_list[idx])
+        
+        object_mean_1, object_mean_5, object_mean_10 = [], [], []
+        for i in range(160):
+            l = len(cls_dict[i])
+            if l > 0:
+                m_1 = (np.array(cls_dict[i]) <= 1).sum() / len(cls_dict[i])
+                m_5 = (np.array(cls_dict[i]) <= 5).sum() / len(cls_dict[i])
+                m_10 = (np.array(cls_dict[i]) <= 10).sum() / len(cls_dict[i])
+                object_mean_1.append(m_1)
+                object_mean_5.append(m_5)
+                object_mean_10.append(m_10) 
+            
+        object_mean_1 = np.mean(object_mean_1)
+        object_mean_5 = np.mean(object_mean_5)
+        object_mean_10 = np.mean(object_mean_10)

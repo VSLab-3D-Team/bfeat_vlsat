@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from src.model.model_utils.model_base import BaseModel
 from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
+from src.utils.eval_utils_recall import *
 from src.model.model_utils.network_MMG import MMG_single
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from clip_adapter.model import AdapterModel
@@ -406,6 +407,10 @@ class Mmgnet(BaseModel):
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
         top_k_rel = evaluate_topk_predicate(rel_cls_3d.detach().cpu(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
         
+        sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='triplet')
+        predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='rels')
+        
+        
         if use_triplet:
             top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
         else:
@@ -415,7 +420,7 @@ class Mmgnet(BaseModel):
             obj_scores = None
             rel_scores = None
 
-        return top_k_obj, top_k_obj, top_k_rel, top_k_rel, top_k_triplet, top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores
+        return top_k_obj, top_k_obj, top_k_rel, top_k_rel, top_k_triplet, top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w
  
     def backward(self, loss):
         loss.backward()
