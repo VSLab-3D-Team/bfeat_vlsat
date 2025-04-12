@@ -407,8 +407,8 @@ class Mmgnet(BaseModel):
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
         top_k_rel = evaluate_topk_predicate(rel_cls_3d.detach().cpu(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
         
-        sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='triplet')
-        predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach(), rel_cls_3d.detach(), gt_edges, edge_indices, self.d_config.multi_rel, [20,50,100], 1, use_clip=True, evaluate='rels')
+        sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='triplet')
+        predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='rels')
         
         
         if use_triplet:
