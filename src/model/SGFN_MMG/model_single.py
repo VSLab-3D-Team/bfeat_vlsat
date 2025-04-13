@@ -364,13 +364,13 @@ class Mmgnet(BaseModel):
         rel_text_feat = self.get_rel_emb(gt_cls, gt_rel_cls, edge_indices)
 
         edge_feature_3d = edge_feature_3d / edge_feature_3d.norm(dim=-1, keepdim=True)
-        rel_mimic_3d = F.l1_loss(edge_feature_3d, rel_text_feat)
+        #rel_mimic_3d = F.l1_loss(edge_feature_3d, rel_text_feat)
         #rel_mimic_3d = self.cosine_loss(edge_feature_3d, rel_text_feat, t=0.9)
 
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d)
+        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) #+ 0.1 * (rel_mimic_3d)
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
