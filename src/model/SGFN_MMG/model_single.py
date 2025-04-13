@@ -386,7 +386,7 @@ class Mmgnet(BaseModel):
                 ("train/obj_loss", loss_obj_3d.detach().item()),
                 ("train/logit_scale", obj_logit_scale.detach().item()),
                 #("train/loss_rel_KL_2d", loss_rel_KL_2d.detach().item()),
-                ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
+                #("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
                 #("train/triplet_loss", triplet_loss.detach().item()),
                 ("train/loss", loss.detach().item()),
                 ("train/Obj_R1", obj_topk_list[0]),
