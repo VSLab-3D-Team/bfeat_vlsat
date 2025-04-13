@@ -199,8 +199,6 @@ class MMGNet():
         sub_scores_list, obj_scores_list, rel_scores_list = [], [], []
         topk_obj_2d_list, topk_rel_2d_list, topk_triplet_2d_list = np.array([]), np.array([]), np.array([])
 
-        count = 0
-        
         for i, items in enumerate(val_loader, 0):
             ''' get data '''
             obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_val(items)            
@@ -249,10 +247,6 @@ class MMGNet():
                     ("Acc@100/triplet_2d", (topk_triplet_2d_list <= 100).sum() * 100 / len(topk_triplet_2d_list)),]
 
             progbar.add(1, values=logs if self.config.VERBOSE else [x for x in logs if not x[0].startswith('Loss')])
-            count = count+1
-            
-            if (count == 10):
-                break
 
 
         cls_matrix_list = np.stack(cls_matrix_list)
