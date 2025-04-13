@@ -194,7 +194,8 @@ class MMGNet():
         
         print('===   start evaluation   ===')
         self.model.eval()
-        topk_obj_list, topk_rel_list, topk_triplet_list, gt_obj_list, sgcls_recall_w_list, predcls_recall_w_list, cls_matrix_list, edge_feature_list = np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), [], []
+        topk_obj_list, topk_rel_list, topk_triplet_list, gt_obj_list, cls_matrix_list, edge_feature_list = np.array([]), np.array([]), np.array([]), np.array([]), [], []
+        sgcls_recall_w_list, predcls_recall_w_list = [], []
         sub_scores_list, obj_scores_list, rel_scores_list = [], [], []
         topk_obj_2d_list, topk_rel_2d_list, topk_triplet_2d_list = np.array([]), np.array([]), np.array([])
 
@@ -218,8 +219,8 @@ class MMGNet():
             topk_triplet_list = np.concatenate((topk_triplet_list, tok_k_triplet))
             topk_triplet_2d_list = np.concatenate((topk_triplet_2d_list, top_k_2d_triplet))
             gt_obj_list = np.concatenate((gt_obj_list, gt_class.cpu().numpy()))
-            sgcls_recall_w_list = np.concatenate((sgcls_recall_w_list, sgcls_recall_w))
-            predcls_recall_w_list = np.concatenate((predcls_recall_w_list, predcls_recall_w))
+            sgcls_recall_w_list.append(sgcls_recall_w)
+            predcls_recall_w_list.append(predcls_recall_w)
 
             if cls_matrix is not None:
                 cls_matrix_list.extend(cls_matrix)
@@ -289,8 +290,11 @@ class MMGNet():
         rel_acc_mean_1, rel_acc_mean_3, rel_acc_mean_5 = self.compute_mean_predicate(cls_matrix_list, topk_rel_list)
         rel_acc_2d_mean_1, rel_acc_2d_mean_3, rel_acc_2d_mean_5 = self.compute_mean_predicate(cls_matrix_list, topk_rel_2d_list)
         obj_acc_mean_1, obj_acc_mean_5, obj_acc_mean_10 = self.compute_mean_object(gt_obj_list, topk_obj_list)
-        sgcls_recall_w=np.mean(sgcls_recall_w_list, axis=0)
-        predcls_recall_w=np.mean(predcls_recall_w_list, axis=0) 
+        
+        L = len(sgcls_recall_w_list)
+        
+        sgcls_recall_w = np.array(sgcls_recall_w_list).sum(0) / L * 100
+        predcls_recall_w = np.array(predcls_recall_w_list).sum(0) / L * 100
      
         print(f"Eval: Recall@1_obj : {obj_acc_1}", file=f_in)   
         print(f"Eval: Recall@5_obj : {obj_acc_5}", file=f_in) 
