@@ -295,7 +295,8 @@ class MMGNet():
         
         sgcls_recall_w = np.array(sgcls_recall_w_list).sum(0) / L * 100
         predcls_recall_w = np.array(predcls_recall_w_list).sum(0) / L * 100
-     
+
+        print()
         print(f"Eval: Recall@1_obj : {obj_acc_1}", file=f_in)   
         print(f"Eval: Recall@5_obj : {obj_acc_5}", file=f_in) 
         print(f"Eval: Recall@10_obj: {obj_acc_10}", file=f_in)  
