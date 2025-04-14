@@ -1,0 +1,414 @@
+=== 160 classes ===
+| 0             armchair:0.006|| 1             backpack:0.019|
+| 2                  bag:0.005|| 3                 ball:0.143|
+| 4                  bar:0.071|| 5                basin:0.286|
+| 6               basket:0.009|| 7         bath cabinet:0.016|
+| 8              bathtub:0.036|| 9                  bed:0.009|
+|10        bedside table:0.061||11                bench:0.011|
+|12                bidet:0.200||13                  bin:0.037|
+|14              blanket:0.007||15               blinds:0.014|
+|16                board:0.087||17                 book:0.050|
+|18                books:0.080||19            bookshelf:0.065|
+|20               bottle:0.041||21                  box:0.001|
+|22                bread:0.286||23               bucket:0.015|
+|24              cabinet:0.004||25               carpet:0.061|
+|26              ceiling:0.002||27                chair:0.001|
+|28             cleanser:0.500||29                clock:0.059|
+|30               closet:0.083||31              clothes:0.006|
+|32        clothes dryer:0.030||33              clutter:0.016|
+|34       coffee machine:0.080||35         coffee table:0.015|
+|36              commode:0.008||37        computer desk:0.250|
+|38                couch:0.025||39          couch table:0.040|
+|40              counter:0.021||41                  cup:0.286|
+|42             cupboard:0.038||43              curtain:0.003|
+|44              cushion:0.011||45        cutting board:0.080|
+|46           decoration:0.022||47                 desk:0.008|
+|48         dining chair:0.038||49         dining table:0.050|
+|50                 door:0.003||51            doorframe:0.006|
+|52               drawer:0.059||53                 drum:0.667|
+|54       drying machine:0.154||55        extractor fan:0.250|
+|56            fireplace:0.105||57                floor:0.001|
+|58               flower:0.057||59              flowers:0.077|
+|60               folder:0.200||61                 food:0.182|
+|62            footstool:0.400||63                frame:0.026|
+|64          fruit plate:1.000||65              garbage:0.054|
+|66          garbage bin:0.087||67                grass:0.500|
+|68           hand dryer:0.133||69               heater:0.007|
+|70                 item:0.003||71               jacket:1.000|
+|72                  jar:0.125||73               kettle:0.047|
+|74    kitchen appliance:0.024||75      kitchen cabinet:0.006|
+|76      kitchen counter:0.016||77         kitchen hood:0.222|
+|78               ladder:0.111||79                 lamp:0.003|
+|80               laptop:0.036||81       laundry basket:0.059|
+|82                light:0.006||83              machine:0.250|
+|84        magazine rack:0.667||85                 menu:1.000|
+|86            microwave:0.030||87               mirror:0.018|
+|88              monitor:0.009||89              napkins:0.143|
+|90           nightstand:0.013||91               object:0.004|
+|92              objects:0.105||93            organizer:0.056|
+|94              ottoman:0.048||95                 oven:0.028|
+|96                 pack:0.059||97                  pan:0.167|
+|98          paper towel:0.091||99               papers:0.286|
+|100                   pc:0.022||101              picture:0.005|
+|102        pile of books:0.154||103       pile of papers:0.400|
+|104               pillow:0.001||105                 pipe:0.047|
+|106                plant:0.003||107                plate:0.041|
+|108               player:0.250||109                  pot:0.054|
+|110              printer:0.047||111                 rack:0.020|
+|112             radiator:0.014||113          recycle bin:0.111|
+|114         refrigerator:0.027||115        rocking chair:0.667|
+|116                scale:0.087||117               screen:0.667|
+|118                shelf:0.002||119                 shoe:0.400|
+|120            shoe rack:0.400||121                shoes:0.024|
+|122             showcase:0.034||123               shower:0.043|
+|124       shower curtain:0.044||125         shower floor:0.200|
+|126          shower wall:0.077||127           side table:0.033|
+|128                 sink:0.006||129            soap dish:0.500|
+|130               socket:0.286||131                 sofa:0.010|
+|132           sofa chair:0.083||133                stair:0.143|
+|134                stand:0.017||135                stool:0.007|
+|136                stove:0.024||137       stuffed animal:0.069|
+|138             suitcase:0.036||139                table:0.003|
+|140           table lamp:0.077||141            telephone:0.042|
+|142              toaster:0.250||143               toilet:0.016|
+|144         toilet brush:0.074||145         toilet paper:0.043|
+|146 toilet paper dispenser:0.250||147                towel:0.007|
+|148            trash can:0.007||149             trashcan:0.333|
+|150                 tube:0.095||151                   tv:0.012|
+|152             tv stand:0.026||153                 vase:0.035|
+|154                 wall:0.000||155             wardrobe:0.009|
+|156      washing machine:0.027||157       washing powder:0.250|
+|158               window:0.003||159           windowsill:0.009|
+
+=== 26 relationships ===
+| 0         supported by 0.001|| 1                 left 0.000|
+| 2                right 0.000|| 3                front 0.000|
+| 4               behind 0.000|| 5             close by 0.000|
+| 6               inside 1.000|| 7          bigger than 0.001|
+| 8         smaller than 0.001|| 9          higher than 0.001|
+|10           lower than 0.001||11     same symmetry as 0.004|
+|12              same as 0.000||13          attached to 0.000|
+|14          standing on 0.000||15             lying on 0.000|
+|16           hanging on 0.001||17         connected to 0.005|
+|18      leaning against 0.005||19              part of 0.015|
+|20         belonging to 0.006||21             build in 0.004|
+|22          standing in 0.004||23                cover 0.022|
+|24             lying in 0.010||25           hanging in 0.100|
+
+num of data: 3845
+=== 160 classes ===
+| 0             armchair:0.045|| 1             backpack:0.400|
+| 2                  bag:0.056|| 3                 ball:0.400|
+| 4                  bar:0.500|| 5                basin:0.500|
+| 6               basket:0.182|| 7         bath cabinet:0.080|
+| 8              bathtub:0.400|| 9                  bed:0.286|
+|10        bedside table:0.400||11                bench:0.105|
+|12                bidet:0.667||13                  bin:0.667|
+|14              blanket:0.044||15               blinds:0.400|
+|16                board:0.333||17                 book:0.182|
+|18                books:0.333||19            bookshelf:0.250|
+|20               bottle:0.500||21                  box:0.019|
+|22                bread:1.000||23               bucket:0.250|
+|24              cabinet:0.016||25               carpet:0.250|
+|26              ceiling:0.012||27                chair:0.010|
+|28             cleanser:0.400||29                clock:0.095|
+|30               closet:0.667||31              clothes:0.095|
+|32        clothes dryer:0.667||33              clutter:0.061|
+|34       coffee machine:0.500||35         coffee table:0.069|
+|36              commode:0.062||37        computer desk:0.333|
+|38                couch:0.053||39          couch table:0.118|
+|40              counter:0.143||41                  cup:1.000|
+|42             cupboard:0.200||43              curtain:0.017|
+|44              cushion:0.033||45        cutting board:0.250|
+|46           decoration:0.056||47                 desk:0.100|
+|48         dining chair:0.182||49         dining table:0.286|
+|50                 door:0.018||51            doorframe:0.035|
+|52               drawer:0.333||53                 drum:0.333|
+|54       drying machine:0.200||55        extractor fan:0.500|
+|56            fireplace:0.154||57                floor:0.004|
+|58               flower:0.250||59              flowers:0.200|
+|60               folder:0.250||61                 food:0.333|
+|62            footstool:0.667||63                frame:0.118|
+|64          fruit plate:0.500||65              garbage:0.400|
+|66          garbage bin:0.286||67                grass:0.667|
+|68           hand dryer:0.286||69               heater:0.051|
+|70                 item:0.025||71               jacket:0.667|
+|72                  jar:0.250||73               kettle:0.250|
+|74    kitchen appliance:0.167||75      kitchen cabinet:0.036|
+|76      kitchen counter:0.105||77         kitchen hood:0.286|
+|78               ladder:0.667||79                 lamp:0.019|
+|80               laptop:0.500||81       laundry basket:0.182|
+|82                light:0.062||83              machine:0.500|
+|84        magazine rack:0.667||85                 menu:0.154|
+|86            microwave:0.182||87               mirror:0.222|
+|88              monitor:0.118||89              napkins:1.000|
+|90           nightstand:1.000||91               object:0.027|
+|92              objects:1.000||93            organizer:0.500|
+|94              ottoman:0.065||95                 oven:0.118|
+|96                 pack:0.133||97                  pan:0.667|
+|98          paper towel:0.500||99               papers:1.000|
+|100                   pc:0.500||101              picture:0.024|
+|102        pile of books:0.222||103       pile of papers:0.400|
+|104               pillow:0.010||105                 pipe:0.400|
+|106                plant:0.013||107                plate:0.182|
+|108               player:0.500||109                  pot:0.250|
+|110              printer:0.143||111                 rack:0.167|
+|112             radiator:0.100||113          recycle bin:1.000|
+|114         refrigerator:0.286||115        rocking chair:0.667|
+|116                scale:0.667||117               screen:0.333|
+|118                shelf:0.014||119                 shoe:0.400|
+|120            shoe rack:0.500||121                shoes:0.333|
+|122             showcase:0.167||123               shower:0.500|
+|124       shower curtain:0.250||125         shower floor:0.667|
+|126          shower wall:0.087||127           side table:0.083|
+|128                 sink:0.033||129            soap dish:0.667|
+|130               socket:1.000||131                 sofa:0.054|
+|132           sofa chair:0.400||133                stair:0.500|
+|134                stand:0.143||135                stool:0.087|
+|136                stove:0.111||137       stuffed animal:1.000|
+|138             suitcase:0.286||139                table:0.023|
+|140           table lamp:0.250||141            telephone:0.333|
+|142              toaster:0.400||143               toilet:0.071|
+|144         toilet brush:0.200||145         toilet paper:0.167|
+|146 toilet paper dispenser:0.182||147                towel:0.071|
+|148            trash can:0.059||149             trashcan:0.500|
+|150                 tube:0.500||151                   tv:0.051|
+|152             tv stand:0.062||153                 vase:0.053|
+|154                 wall:0.003||155             wardrobe:0.143|
+|156      washing machine:0.133||157       washing powder:1.000|
+|158               window:0.023||159           windowsill:0.118|
+
+=== 26 relationships ===
+| 0         supported by 0.004|| 1                 left 0.001|
+| 2                right 0.001|| 3                front 0.001|
+| 4               behind 0.001|| 5             close by 0.001|
+| 6               inside 1.000|| 7          bigger than 0.012|
+| 8         smaller than 0.012|| 9          higher than 0.005|
+|10           lower than 0.005||11     same symmetry as 0.020|
+|12              same as 0.005||13          attached to 0.001|
+|14          standing on 0.001||15             lying on 0.004|
+|16           hanging on 0.006||17         connected to 0.029|
+|18      leaning against 0.050||19              part of 0.143|
+|20         belonging to 0.031||21             build in 0.029|
+|22          standing in 0.038||23                cover 0.053|
+|24             lying in 0.027||25           hanging in 0.500|
+
+num of data: 548
+
+Loading Mmgnet2 model...
+	No saved model found
+
+start training...
+
+Para obj_logit_scale need grad
+Para obj_encoder.stn.conv1.weight need grad
+Para obj_encoder.stn.conv1.bias need grad
+Para obj_encoder.stn.conv2.weight need grad
+Para obj_encoder.stn.conv2.bias need grad
+Para obj_encoder.stn.conv3.weight need grad
+Para obj_encoder.stn.conv3.bias need grad
+Para obj_encoder.stn.fc1.weight need grad
+Para obj_encoder.stn.fc1.bias need grad
+Para obj_encoder.stn.fc2.weight need grad
+Para obj_encoder.stn.fc2.bias need grad
+Para obj_encoder.stn.fc3.weight need grad
+Para obj_encoder.stn.fc3.bias need grad
+Para obj_encoder.stn.bn1.weight need grad
+Para obj_encoder.stn.bn1.bias need grad
+Para obj_encoder.stn.bn2.weight need grad
+Para obj_encoder.stn.bn2.bias need grad
+Para obj_encoder.stn.bn3.weight need grad
+Para obj_encoder.stn.bn3.bias need grad
+Para obj_encoder.stn.bn4.weight need grad
+Para obj_encoder.stn.bn4.bias need grad
+Para obj_encoder.stn.bn5.weight need grad
+Para obj_encoder.stn.bn5.bias need grad
+Para obj_encoder.conv1.weight need grad
+Para obj_encoder.conv1.bias need grad
+Para obj_encoder.conv2.weight need grad
+Para obj_encoder.conv2.bias need grad
+Para obj_encoder.conv3.weight need grad
+Para obj_encoder.conv3.bias need grad
+Para obj_encoder.bn1.weight need grad
+Para obj_encoder.bn1.bias need grad
+Para obj_encoder.bn2.weight need grad
+Para obj_encoder.bn2.bias need grad
+Para obj_encoder.bn3.weight need grad
+Para obj_encoder.bn3.bias need grad
+Para rel_encoder_3d.obj_proj.weight need grad
+Para rel_encoder_3d.obj_proj.bias need grad
+Para rel_encoder_3d.geo_proj.weight need grad
+Para rel_encoder_3d.geo_proj.bias need grad
+Para rel_encoder_3d.merge_layer.weight need grad
+Para rel_encoder_3d.merge_layer.bias need grad
+Para rel_encoder_3d.res_blocks.0.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.0.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.0.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.0.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.0.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.0.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.0.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.0.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.1.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.1.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.1.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.1.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.1.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.1.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.1.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.1.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.2.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.2.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.2.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.2.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.2.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.2.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.2.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.2.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.3.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.3.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.3.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.3.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.3.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.3.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.3.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.3.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.4.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.4.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.4.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.4.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.4.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.4.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.4.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.4.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.5.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.5.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.5.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.5.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.5.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.5.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.5.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.5.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.6.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.6.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.6.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.6.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.6.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.6.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.6.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.6.bn2.bias need grad
+Para rel_encoder_3d.res_blocks.7.fc1.weight need grad
+Para rel_encoder_3d.res_blocks.7.fc1.bias need grad
+Para rel_encoder_3d.res_blocks.7.bn1.weight need grad
+Para rel_encoder_3d.res_blocks.7.bn1.bias need grad
+Para rel_encoder_3d.res_blocks.7.fc2.weight need grad
+Para rel_encoder_3d.res_blocks.7.fc2.bias need grad
+Para rel_encoder_3d.res_blocks.7.bn2.weight need grad
+Para rel_encoder_3d.res_blocks.7.bn2.bias need grad
+Para rel_encoder_3d.fc_out.weight need grad
+Para rel_encoder_3d.fc_out.bias need grad
+Para mmg.self_attn.0.attention.fc_q.weight need grad
+Para mmg.self_attn.0.attention.fc_q.bias need grad
+Para mmg.self_attn.0.attention.fc_k.weight need grad
+Para mmg.self_attn.0.attention.fc_k.bias need grad
+Para mmg.self_attn.0.attention.fc_v.weight need grad
+Para mmg.self_attn.0.attention.fc_v.bias need grad
+Para mmg.self_attn.0.attention.fc_o.weight need grad
+Para mmg.self_attn.0.attention.fc_o.bias need grad
+Para mmg.self_attn.0.layer_norm.weight need grad
+Para mmg.self_attn.0.layer_norm.bias need grad
+Para mmg.self_attn.1.attention.fc_q.weight need grad
+Para mmg.self_attn.1.attention.fc_q.bias need grad
+Para mmg.self_attn.1.attention.fc_k.weight need grad
+Para mmg.self_attn.1.attention.fc_k.bias need grad
+Para mmg.self_attn.1.attention.fc_v.weight need grad
+Para mmg.self_attn.1.attention.fc_v.bias need grad
+Para mmg.self_attn.1.attention.fc_o.weight need grad
+Para mmg.self_attn.1.attention.fc_o.bias need grad
+Para mmg.self_attn.1.layer_norm.weight need grad
+Para mmg.self_attn.1.layer_norm.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.nn_edge.0.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.nn_edge.0.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.nn_edge.2.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.nn_edge.2.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.nn.0.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.nn.0.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.nn.3.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.nn.3.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_edge.0.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_edge.0.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_query.0.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_query.0.bias need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_value.0.weight need grad
+Para mmg.gcn_3ds.0.edgeatten.proj_value.0.bias need grad
+Para mmg.gcn_3ds.0.prop.0.weight need grad
+Para mmg.gcn_3ds.0.prop.0.bias need grad
+Para mmg.gcn_3ds.0.prop.2.weight need grad
+Para mmg.gcn_3ds.0.prop.2.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.nn_edge.0.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.nn_edge.0.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.nn_edge.2.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.nn_edge.2.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.nn.0.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.nn.0.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.nn.3.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.nn.3.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_edge.0.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_edge.0.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_query.0.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_query.0.bias need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_value.0.weight need grad
+Para mmg.gcn_3ds.1.edgeatten.proj_value.0.bias need grad
+Para mmg.gcn_3ds.1.prop.0.weight need grad
+Para mmg.gcn_3ds.1.prop.0.bias need grad
+Para mmg.gcn_3ds.1.prop.2.weight need grad
+Para mmg.gcn_3ds.1.prop.2.bias need grad
+Para proj_geo_desc.0.weight need grad
+Para proj_geo_desc.0.bias need grad
+Para proj_geo_desc.1.weight need grad
+Para proj_geo_desc.1.bias need grad
+Para proj_geo_desc.3.weight need grad
+Para proj_geo_desc.3.bias need grad
+Para proj_geo_desc.4.weight need grad
+Para proj_geo_desc.4.bias need grad
+Para triplet_projector_3d.0.weight need grad
+Para triplet_projector_3d.0.bias need grad
+Para triplet_projector_3d.3.weight need grad
+Para triplet_projector_3d.3.bias need grad
+Para mlp_3d.0.weight need grad
+Para mlp_3d.0.bias need grad
+Para mlp_3d.1.weight need grad
+Para mlp_3d.1.bias need grad
+Para rel_predictor_3d.fc1.weight need grad
+Para rel_predictor_3d.fc1.bias need grad
+Para rel_predictor_3d.fc2.weight need grad
+Para rel_predictor_3d.fc2.bias need grad
+Para rel_predictor_3d.fc3.weight need grad
+Para rel_predictor_3d.fc3.bias need grad
+Para obj_predictor_3d.weight need grad
+Para obj_predictor_3d.bias need grad
+
+
+Training epoch: 1
+Traceback (most recent call last):
+  File "main.py", line 91, in <module>
+    main()
+  File "main.py", line 50, in main
+    model.train()
+  File "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/src/model/model.py", line 151, in train
+    logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
+  File "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/src/model/SGFN_MMG/model_pt.py", line 317, in process_train
+    self(obj_points, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=True)
+  File "/home/michael/miniconda3/envs/vlsat/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/src/model/SGFN_MMG/model_pt.py", line 277, in forward
+    obj_feature = self.mlp_3d(obj_feature)
+  File "/home/michael/miniconda3/envs/vlsat/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/michael/miniconda3/envs/vlsat/lib/python3.8/site-packages/torch/nn/modules/container.py", line 139, in forward
+    input = module(input)
+  File "/home/michael/miniconda3/envs/vlsat/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/michael/miniconda3/envs/vlsat/lib/python3.8/site-packages/torch/nn/modules/linear.py", line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+TypeError: linear(): argument 'input' (position 1) must be Tensor, not tuple

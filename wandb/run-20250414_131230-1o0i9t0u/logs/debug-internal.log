@@ -1,0 +1,7 @@
+{"time":"2025-04-14T13:12:31.124293992+09:00","level":"INFO","msg":"stream: starting","core version":"0.19.4","symlink path":"/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/wandb/run-20250414_131230-1o0i9t0u/logs/debug-core.log"}
+{"time":"2025-04-14T13:12:31.227293315+09:00","level":"INFO","msg":"created new stream","id":"1o0i9t0u"}
+{"time":"2025-04-14T13:12:31.227350853+09:00","level":"INFO","msg":"stream: started","id":"1o0i9t0u"}
+{"time":"2025-04-14T13:12:31.227466038+09:00","level":"INFO","msg":"handler: started","stream_id":"1o0i9t0u"}
+{"time":"2025-04-14T13:12:31.227455968+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"1o0i9t0u"}
+{"time":"2025-04-14T13:12:31.227617442+09:00","level":"INFO","msg":"sender: started","stream_id":"1o0i9t0u"}
+{"time":"2025-04-14T13:12:31.522125973+09:00","level":"INFO","msg":"Starting system monitor"}
