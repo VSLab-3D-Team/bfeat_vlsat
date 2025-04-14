@@ -11,7 +11,8 @@ from src.model.transformer.attention import MultiHeadAttention
 from torch_geometric.nn import MessagePassing
 from torch_scatter import scatter
 import math
-from typing import Optional, Tensor
+from torch import Tensor
+from typing import Optional
 
 
 class GraphEdgeAttenNetwork(torch.nn.Module):
