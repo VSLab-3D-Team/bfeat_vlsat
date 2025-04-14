@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
-from src.model.SGFN_MMG.model import Mmgnet
+from src.model.SGFN_MMG.model_single import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 
@@ -25,26 +25,27 @@ class MMGNet():
         self.save_res = config.EVAL
         self.update_2d = config.update_2d
 
-        if not self.config.EVAL and config.MODE == 'train':
-            try:
-                if wandb.run is None:
-                    wandb.init(
-                        project="3DSSG_VL-SAT",
-                        entity="kimh060612-kyung-hee-university",
-                        name=self.exp,
-                        config={
-                            "model_name": self.model_name,
-                            "batch_size": self.config.Batch_Size,
-                            "learning_rate": self.config.LR,
-                            "max_epochs": self.config.MAX_EPOCHES,
-                            "use_rgb": mconfig.USE_RGB,
-                            "use_normal": mconfig.USE_NORMAL,
-                            "multi_rel_outputs": mconfig.multi_rel_outputs,
-                            "device": str(config.DEVICE),
-                        }
-                    )
-            except Exception as e:
-                print(f"Error during wandb logging: {e}")
+        try:
+            if wandb.run is None:
+                wandb.init(
+                    project="3DSSG_VL-SAT",
+                    entity="kimh060612-kyung-hee-university",
+                    name=self.exp,
+                    config={
+                        "model_name": self.model_name,
+                        "batch_size": self.config.Batch_Size,
+                        "learning_rate": self.config.LR,
+                        "max_epochs": self.config.MAX_EPOCHES,
+                        "use_rgb": mconfig.USE_RGB,
+                        "use_normal": mconfig.USE_NORMAL,
+                        "multi_rel_outputs": mconfig.multi_rel_outputs,
+                        "device": str(config.DEVICE),
+                        "use_distance_mask": mconfig.get('USE_DISTANCE_MASK', True),
+                        "use_node_attention": mconfig.get('USE_NODE_ATTENTION', False),
+                    }
+                )
+        except Exception as e:
+            print(f"Error during wandb logging: {e}")
         
         ''' Build dataset '''
         dataset = None
@@ -380,60 +381,59 @@ class MMGNet():
                 ("all_zero_shot_recall@100", all_zero_shot_recall[1])
                 ]
         
-        if not self.config.EVAL:
-            try:
-                if wandb.run is None:
-                    wandb.init(project=f"MMGNet-{self.model_name}", name=self.exp)
-                    
-                wandb_eval_logs = {
-                    "val/Recall@1_obj": obj_acc_1,
-                    "val/Recall@5_obj": obj_acc_5,
-                    "val/Recall@10_obj": obj_acc_10,
-                    "val/Recall@1_pred": rel_acc_1,
-                    "val/Recall@3_pred": rel_acc_3,
-                    "val/Recall@5_pred": rel_acc_5,
-                    "val/Recall@50_triplet": triplet_acc_50,
-                    "val/Recall@100_triplet": triplet_acc_100,
-                    "val/mRecall@1_obj": obj_acc_mean_1,
-                    "val/mRecall@5_obj": obj_acc_mean_5,
-                    "val/mRecall@10_obj": obj_acc_mean_10,
-                    "val/mRecall@1_pred": rel_acc_mean_1,
-                    "val/mRecall@3_pred": rel_acc_mean_3,
-                    "val/mRecall@5_pred": rel_acc_mean_5,
-                    "val/mRecall@50_triplet": mean_recall[0],
-                    "val/mRecall@100_triplet": mean_recall[1],
-                    "val/SGcls_w@20": sgcls_recall_w[0],
-                    "val/SGcls_w@50": sgcls_recall_w[1],
-                    "val/SGcls_w@100": sgcls_recall_w[2],
-                    "val/Predcls_w@20": predcls_recall_w[0],
-                    "val/Predcls_w@50": predcls_recall_w[1],
-                    "val/Predcls_w@100": predcls_recall_w[2],
-                    "val/zero_shot_recall@50": zero_shot_recall[0],
-                    "val/zero_shot_recall@100": zero_shot_recall[1],
-                    "val/non_zero_shot_recall@50": non_zero_shot_recall[0],
-                    "val/non_zero_shot_recall@100": non_zero_shot_recall[1],
-                    "val/all_zero_shot_recall@50": all_zero_shot_recall[0],
-                    "val/all_zero_shot_recall@100": all_zero_shot_recall[1],
-                    "val/Recall@1_obj_2d": obj_acc_2d_1,
-                    "val/Recall@5_obj_2d": obj_acc_2d_5,
-                    "val/Recall@10_obj_2d": obj_acc_2d_10,
-                    "val/Recall@1_pred_2d": rel_acc_2d_1,
-                    "val/Recall@3_pred_2d": rel_acc_2d_3,
-                    "val/Recall@5_pred_2d": rel_acc_2d_5,
-                    "val/Recall@50_triplet_2d": triplet_acc_2d_50,
-                    "val/Recall@100_triplet_2d": triplet_acc_2d_100,
-                    "val/mRecall@1_pred_2d": rel_acc_2d_mean_1,
-                    "val/mRecall@3_pred_2d": rel_acc_2d_mean_3,
-                    "val/mRecall@5_pred_2d": rel_acc_2d_mean_5,
-                    "val/mRecall@50_triplet_2d": mean_recall_2d[0],
-                    "val/mRecall@100_triplet_2d": mean_recall_2d[1],
-                    "epoch": self.model.epoch
-                }
+        try:
+            if wandb.run is None:
+                wandb.init(project=f"MMGNet-{self.model_name}", name=self.exp)
                 
-                wandb.log(wandb_eval_logs, step=self.model.iteration)
-                
-            except Exception as e:
-                print(f"Error during wandb logging: {e}")
+            wandb_eval_logs = {
+                "val/Recall@1_obj": obj_acc_1,
+                "val/Recall@5_obj": obj_acc_5,
+                "val/Recall@10_obj": obj_acc_10,
+                "val/Recall@1_pred": rel_acc_1,
+                "val/Recall@3_pred": rel_acc_3,
+                "val/Recall@5_pred": rel_acc_5,
+                "val/Recall@50_triplet": triplet_acc_50,
+                "val/Recall@100_triplet": triplet_acc_100,
+                "val/mRecall@1_obj": obj_acc_mean_1,
+                "val/mRecall@5_obj": obj_acc_mean_5,
+                "val/mRecall@10_obj": obj_acc_mean_10,
+                "val/mRecall@1_pred": rel_acc_mean_1,
+                "val/mRecall@3_pred": rel_acc_mean_3,
+                "val/mRecall@5_pred": rel_acc_mean_5,
+                "val/mRecall@50_triplet": mean_recall[0],
+                "val/mRecall@100_triplet": mean_recall[1],
+                "val/SGcls_w@20": sgcls_recall_w[0],
+                "val/SGcls_w@50": sgcls_recall_w[1],
+                "val/SGcls_w@100": sgcls_recall_w[2],
+                "val/Predcls_w@20": predcls_recall_w[0],
+                "val/Predcls_w@50": predcls_recall_w[1],
+                "val/Predcls_w@100": predcls_recall_w[2],
+                "val/zero_shot_recall@50": zero_shot_recall[0],
+                "val/zero_shot_recall@100": zero_shot_recall[1],
+                "val/non_zero_shot_recall@50": non_zero_shot_recall[0],
+                "val/non_zero_shot_recall@100": non_zero_shot_recall[1],
+                "val/all_zero_shot_recall@50": all_zero_shot_recall[0],
+                "val/all_zero_shot_recall@100": all_zero_shot_recall[1],
+                "val/Recall@1_obj_2d": obj_acc_2d_1,
+                "val/Recall@5_obj_2d": obj_acc_2d_5,
+                "val/Recall@10_obj_2d": obj_acc_2d_10,
+                "val/Recall@1_pred_2d": rel_acc_2d_1,
+                "val/Recall@3_pred_2d": rel_acc_2d_3,
+                "val/Recall@5_pred_2d": rel_acc_2d_5,
+                "val/Recall@50_triplet_2d": triplet_acc_2d_50,
+                "val/Recall@100_triplet_2d": triplet_acc_2d_100,
+                "val/mRecall@1_pred_2d": rel_acc_2d_mean_1,
+                "val/mRecall@3_pred_2d": rel_acc_2d_mean_3,
+                "val/mRecall@5_pred_2d": rel_acc_2d_mean_5,
+                "val/mRecall@50_triplet_2d": mean_recall_2d[0],
+                "val/mRecall@100_triplet_2d": mean_recall_2d[1],
+                "epoch": self.model.epoch
+            }
+            
+            wandb.log(wandb_eval_logs, step=self.model.iteration)
+            
+        except Exception as e:
+            print(f"Error during wandb logging: {e}")
         
         self.log(logs, self.model.iteration)
         return mean_recall[0]
