@@ -69,7 +69,10 @@ class Mmgnet(BaseModel):
             flow=self.flow,
             attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
-            DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN)
+            DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
+            use_distance_mask=self.mconfig.get('USE_DISTANCE_MASK', True),
+            use_node_attention=self.mconfig.get('USE_NODE_ATTENTION', False)
+        )
 
         self.triplet_projector_3d = torch.nn.Sequential(
             torch.nn.Linear(512 * 3, 512 * 2),
@@ -370,7 +373,7 @@ class Mmgnet(BaseModel):
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d)
+        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) # + 0.1 * (rel_mimic_3d)
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
@@ -386,7 +389,7 @@ class Mmgnet(BaseModel):
                 ("train/obj_loss", loss_obj_3d.detach().item()),
                 ("train/logit_scale", obj_logit_scale.detach().item()),
                 #("train/loss_rel_KL_2d", loss_rel_KL_2d.detach().item()),
-                ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
+                #("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
                 #("train/triplet_loss", triplet_loss.detach().item()),
                 ("train/loss", loss.detach().item()),
                 ("train/Obj_R1", obj_topk_list[0]),
