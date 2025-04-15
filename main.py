@@ -10,6 +10,7 @@ from src.utils.config import Config
 from utils import util
 import torch
 import argparse
+import time
 
 def main():
     config = load_config()
@@ -56,21 +57,21 @@ def main():
     
 def load_config():
     r"""loads model config
-
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--config', type=str, default='config_example.json', help='configuration file name. Relative path under given path (default: config.yml)')
-    parser.add_argument('--loadbest', type=int, default=0,choices=[0,1], help='1: load best model or 0: load checkpoints. Only works in non training mode.')
-    parser.add_argument('--mode', type=str, choices=['train','trace','eval'], help='mode. can be [train,trace,eval]',required=True)
-    parser.add_argument('--exp', type=str)
+    parser.add_argument('--loadbest', type=int, default=0, choices=[0,1], help='1: load best model or 0: load checkpoints. Only works in non training mode.')
+    parser.add_argument('--mode', type=str, choices=['train','trace','eval'], help='mode. can be [train,trace,eval]', required=True)
+    parser.add_argument('--exp', type=str, help='experiment name')
 
     args = parser.parse_args()
     config_path = os.path.abspath(args.config)
 
     if not os.path.exists(config_path):
-        raise RuntimeError('Targer config file does not exist. {}' & config_path)
+        raise RuntimeError('Target config file does not exist. {}'.format(config_path))
     
-    # load config file
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    
     config = Config(config_path)
     
     if 'NAME' not in config:
@@ -81,10 +82,17 @@ def load_config():
             translation_table = dict.fromkeys(map(ord, '!@#$'), None)
             name = name.translate(translation_table)
             config['NAME'] = name            
+    
     config.LOADBEST = args.loadbest
     config.MODE = args.mode
-    config.exp = args.exp
-
+    
+    if args.exp:
+        config.exp = f"{timestamp}_{args.exp}"
+    else:
+        config.exp = timestamp
+    
+    print(f"exp name: {config.exp}")
+    
     return config
 
 if __name__ == '__main__':
