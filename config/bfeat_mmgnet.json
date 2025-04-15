@@ -1,9 +1,9 @@
 {
     "_NAME": ["SGFN", "Mmgnet"],
-    "MODEL_PATH": "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/src/model/model.py",
+    "MODEL_PATH": "/data/hkh7710/sy/vlsat/src/model/model.py",
     "NAME": "Mmgnet",
-    "PATH": "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/output",
-    "multi_view_root": "/media/michael/ssd1/SceneGraph/3DSSG/3RScan",
+    "PATH": "/data/hkh7710/sy/vlsat/output",
+    "multi_view_root": "/data2/local_datasets/3RScan",
     "VERBOSE": false,
     "SEED": 2020,
     "MAX_EPOCHES": 100,
@@ -56,14 +56,14 @@
       "NONE_RATIO": 1.0,
       "NUM_HEADS": 8,
       "use_pretrain":"",
-      "obj_pretrian_path": "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/model_checkpoints/pc_encoder_mv_vl.pth",
+      "obj_pretrian_path": "/data/hkh7710/sy/vlsat/model_checkpoints/pc_encoder_mv_vl.pth",
       "use_descriptor": true,
-      "obj_label_path":"/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/classes.txt",
-      "rel_label_path":"/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/relations.txt",
-      "adapter_path":"/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/bfeat_vlsat/clip_adapter/checkpoint/origin_mean.pth"
+      "obj_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt",
+      "rel_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/relations.txt",
+      "adapter_path":"/data/hkh7710/sy/vlsat/clip_adapter/checkpoint/origin_mean.pth"
     },
     "dataset": {
-      "root": "/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset",
+      "root": "/data/hkh7710/sy/vlsat/data/3DSSG_subset",
       "selection": "",
       "use_data_augmentation": false,
       "ignore_scannet_rel": true,
