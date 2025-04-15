@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import collections
 from pathlib import Path
+import time
 
 class BaseModel(nn.Module):
     def __init__(self, name, config):
@@ -46,31 +47,49 @@ class BaseModel(nn.Module):
         
     def save(self):
         print('\nSaving %s...' % self.name)
-
+        
+        current_epoch = getattr(self, 'epoch', 0)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        unique_suffix = f"_epoch{current_epoch}_{timestamp}"
+        
+        performance_info = f"_IoU{self.eva_res:.4f}"
+        save_suffix = unique_suffix + performance_info
+        
+        is_best = False
         if not os.path.exists(self.config_path+self.best_suffix):
-            print('No previous best model found. Saving this as the best.\n')
-            suffix = self.best_suffix
+            print('No previous best model found. This will be marked as the best.\n')
+            is_best = True
         else:
             print('Found the previous best model.')
-            _, eva_res = self.loadConfig(self.config_path+self.best_suffix)
-            print('current v.s. previous: {:1.3f} {:1.3f}'.format(self.eva_res, eva_res))
-            if self.eva_res > eva_res:
-                print('Current IoU is better. Update best model.\n')
-                suffix = self.best_suffix
+            _, prev_best_eva_res = self.loadConfig(self.config_path+self.best_suffix)
+            print('current v.s. previous best: {:1.4f} v.s. {:1.4f}'.format(self.eva_res, prev_best_eva_res))
+            if self.eva_res > prev_best_eva_res:
+                print('Current IoU is better. This will be marked as the new best.\n')
+                is_best = True
             else:
-                print('Previous IoU is better, save this one as checkpoint.\n')
-                suffix = self.suffix
-                
-        self.saveConfig(self.config_path + suffix)
-        for name,model in self._modules.items():
+                print('Previous best IoU is still better.\n')
+        
+        self.saveConfig(self.config_path + save_suffix)
+        
+        for name, model in self._modules.items():
             skip = False
             for k in self.skip_names:
                 if name.find(k) != -1:
                     skip = True
             if skip is False:
-                self.saveWeights(model, os.path.join(self.saving_pth, name + suffix))
-        torch.save({'optimizer': self.optimizer.state_dict()}, os.path.join(self.saving_pth,'optimizer'+suffix))
-        torch.save({'lr_scheduler':self.lr_scheduler.state_dict()}, os.path.join(self.saving_pth,'lr_scheduler'+suffix))
+                self.saveWeights(model, os.path.join(self.saving_pth, name + save_suffix))
+        
+        torch.save({'optimizer': self.optimizer.state_dict()}, 
+                os.path.join(self.saving_pth, 'optimizer' + save_suffix))
+        torch.save({'lr_scheduler': self.lr_scheduler.state_dict()}, 
+                os.path.join(self.saving_pth, 'lr_scheduler' + save_suffix))
+        
+        if is_best:
+            best_marker_suffix = save_suffix + "_best"
+            self.saveConfig(self.config_path + best_marker_suffix)
+            
+            with open(os.path.join(self.saving_pth, 'best_model_info.txt'), 'a') as f:
+                f.write(f"Date: {timestamp}, Epoch: {current_epoch}, IoU: {self.eva_res:.4f}, Suffix: {save_suffix}\n")
                 
     def load(self, best=False):
         print('\nLoading %s model...' % self.name)
