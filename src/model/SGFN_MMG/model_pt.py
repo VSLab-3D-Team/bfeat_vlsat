@@ -82,7 +82,9 @@ class Mmgnet(BaseModel):
             flow=self.flow,
             attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
-            DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN
+            DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
+            use_distance_mask=self.mconfig.get('USE_DISTANCE_MASK', True),
+            use_node_attention=self.mconfig.get('USE_NODE_ATTENTION', False)
         )
         
         # self.proj_clip_edge = build_mlp([
