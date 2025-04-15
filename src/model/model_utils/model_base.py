@@ -25,7 +25,9 @@ class BaseModel(nn.Module):
     def saveConfig(self, path):
         torch.save({
             'iteration': self.iteration,
-            'eva_res' : self.eva_res
+            'epoch': self.epoch,
+            'eva_res': self.eva_res,
+            'timestamp': time.strftime("%Y%m%d_%H%M%S")
         }, path)
         
     def loadConfig(self, path):
@@ -40,6 +42,11 @@ class BaseModel(nn.Module):
             except:
                 print('Target saving config file does not contain eva_res!')
                 eva_res = 0
+            
+            try:
+                self.epoch = data.get('epoch', 0)
+            except:
+                self.epoch = 0
                 
             return data['iteration'], eva_res
         else:
@@ -93,58 +100,71 @@ class BaseModel(nn.Module):
                 
     def load(self, best=False):
         print('\nLoading %s model...' % self.name)
-        loaded=True
+        loaded = True
+        
+        best_model_info_path = os.path.join(self.saving_pth, 'best_model_info.txt')
+        
+        config_files = [f for f in os.listdir(self.saving_pth) if f.startswith('config_epoch') and f.endswith('.pth')]
+        
+        if not config_files:
+            print('\tNo saved models found')
+            return False
         
         if best:
-            suffix = self.best_suffix
-        else:
-            if os.path.exists(self.config_path+self.best_suffix) and best:
-                print('\tTrying to load the best model')
-                suffix = self.best_suffix
-            elif not os.path.exists(self.config_path+self.suffix) and os.path.exists(self.config_path+self.best_suffix):
-                print('\tNo checkpoints, but has saved best model. Load the best model')
-                suffix = self.best_suffix
-            elif os.path.exists(self.config_path+self.suffix) and os.path.exists(self.config_path+self.best_suffix):
-                print('\tFound checkpoint model and the best model. Comparing itertaion')
-                iteration, _= self.loadConfig(self.config_path + self.suffix)
-                iteration_best, _= self.loadConfig(self.config_path + self.best_suffix)
-                if iteration > iteration_best:
-                    print('\tcheckpoint has larger iteration value. Load checkpoint')
-                    suffix = self.suffix
-                else:
-                    print('\tthe best model has larger iteration value. Load the best model')
-                    suffix = self.best_suffix
-            elif os.path.exists(self.config_path+self.suffix):
-                print('\tLoad checkpoint')
-                suffix = self.suffix
+            if os.path.exists(best_model_info_path):
+                with open(best_model_info_path, 'r') as f:
+                    lines = f.readlines()
+                    if lines:
+                        last_best_line = lines[-1]
+                        suffix_info = last_best_line.strip().split('Suffix: ')[-1]
+                        print(f'\tLoading best model with suffix: {suffix_info}')
+                        config_path = self.config_path + suffix_info
+                    else:
+                        print('\tBest model info file exists but is empty, loading latest model instead')
+                        best = False
             else:
-                print('\tNo saved model found')
-                return False
-
-        self.iteration, self.eva_res = self.loadConfig(self.config_path + suffix)
-        for name,model in self._modules.items():
+                print('\tNo best model info found, loading latest model instead')
+                best = False
+        
+        if not best:
+            config_files.sort(key=lambda x: (
+                int(x.split('_epoch')[1].split('_')[0]),  
+                x.split('_epoch')[1].split('_')[1]       
+            ), reverse=True)
+            
+            latest_config = config_files[0]
+            suffix_info = latest_config.replace('config', '')
+            print(f'\tLoading latest model: {latest_config}')
+            config_path = self.config_path + suffix_info
+        
+        self.iteration, self.eva_res = self.loadConfig(config_path)
+        print(f'\tLoaded model from iteration {self.iteration} with evaluation result {self.eva_res:.4f}')
+        
+        for name, model in self._modules.items():
             skip = False
             for k in self.skip_names:
                 if name.find(k) != -1:
                     skip = True
             if skip is False:
-                #import ipdb; ipdb.set_trace()
-                loaded &= self.loadWeights(model, os.path.join(self.saving_pth, name + suffix))
+                model_path = os.path.join(self.saving_pth, name + suffix_info)
+                loaded &= self.loadWeights(model, model_path)
         
-        if os.path.exists(os.path.join(self.saving_pth,'optimizer'+suffix)):
-            data = torch.load(os.path.join(self.saving_pth,'optimizer'+suffix))
+        optimizer_path = os.path.join(self.saving_pth, 'optimizer' + suffix_info)
+        if os.path.exists(optimizer_path):
+            data = torch.load(optimizer_path)
             self.optimizer.load_state_dict(data['optimizer'])
-            print(f'resume optimizer from {suffix}', flush=True)
+            print(f'\tResumed optimizer from {suffix_info}', flush=True)
         
-        if os.path.exists(os.path.join(self.saving_pth,'lr_scheduler'+suffix)):
-            data = torch.load(os.path.join(self.saving_pth,'lr_scheduler'+suffix))
+        scheduler_path = os.path.join(self.saving_pth, 'lr_scheduler' + suffix_info)
+        if os.path.exists(scheduler_path):
+            data = torch.load(scheduler_path)
             self.lr_scheduler.load_state_dict(data['lr_scheduler'])
-            print(f"resume lr scehduler from {suffix}", flush=True)
-            
+            print(f"\tResumed lr scheduler from {suffix_info}", flush=True)
+        
         if loaded:
-            print('\tmodel loaded!\n')
+            print('\tModel loaded successfully!\n')
         else:
-            print('\tmodel loading failed!\n')
+            print('\tModel loading failed!\n')
         return loaded
        
     def load_pretrain_model(self, path, skip_names=["predictor"], is_freeze=True):    
