@@ -587,13 +587,13 @@ class MMG_pt_single(torch.nn.Module):
                 num_heads=num_heads,
                 use_bn=use_bn,
                 aggr=aggr,
-                attn_dropout=kwargs.get('DROP_OUT_ATTEN', 0.1),
+                attn_dropout=kwargs.get('DROP_OUT_ATTEN', 0.3),
                 flow=flow,
                 use_distance_mask=self.use_distance_mask,
                 use_node_attention=self.use_node_attention
             ))
         
-        self.drop_out = torch.nn.Dropout(kwargs.get('DROP_OUT_ATTEN', 0.1))
+        self.drop_out = torch.nn.Dropout(kwargs.get('DROP_OUT_ATTEN', 0.3))
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
