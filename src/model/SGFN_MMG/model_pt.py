@@ -84,7 +84,7 @@ class Mmgnet(BaseModel):
             use_edge=self.mconfig.USE_GCN_EDGE,
             DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
             use_bidirectional=True,
-            use_distance_mask=True,
+            use_distance_mask=False,
         )
         
         # self.proj_clip_edge = build_mlp([
