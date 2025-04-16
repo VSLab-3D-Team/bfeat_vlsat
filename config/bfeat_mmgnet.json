@@ -61,8 +61,8 @@
       "obj_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt",
       "rel_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/relations.txt",
       "adapter_path":"/data/hkh7710/sy/vlsat/clip_adapter/checkpoint/origin_mean.pth",
-      "USE_DISTANCE_MASK": true,
-      "USE_NODE_ATTENTION ": true
+      "USE_DISTANCE_MASK": false,
+      "USE_NODE_ATTENTION ": false
     },
     "dataset": {
       "root": "/data/hkh7710/sy/vlsat/data/3DSSG_subset",
