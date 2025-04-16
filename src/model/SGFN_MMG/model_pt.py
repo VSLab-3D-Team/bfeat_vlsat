@@ -119,12 +119,12 @@ class Mmgnet(BaseModel):
         if mconfig.multi_rel_outputs:
             self.rel_predictor_3d = PointNetRelClsMulti(
                 num_rel_class, 
-                in_size=512, 
+                in_size=dim_edge_feature,  # 임시 수정 256으로 변경
                 batch_norm=with_bn,drop_out=True)
         else:
             self.rel_predictor_3d = PointNetRelCls(
                 num_rel_class, 
-                in_size=512, 
+                in_size=dim_edge_feature,  # 임시 수정 256으로 변경
                 batch_norm=with_bn,drop_out=True)
             
         self.init_weight(obj_label_path=self.mconfig.obj_label_path, \
