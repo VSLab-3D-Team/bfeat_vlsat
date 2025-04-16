@@ -163,7 +163,7 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             edge_feature = self.nn_edge(edge_feature)
         
         if self.attention == 'fat':
-            value = self.proj_value(value)
+            value_proj = self.proj_value(value)
             query = self.proj_query(query).view(batch_dim, self.d_n, self.num_heads)
             edge = self.proj_edge(edge).view(batch_dim, self.d_e, self.num_heads)
             
@@ -177,14 +177,16 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             if obj_centers is not None:
                 node_distance_weights = torch.exp(-(distances ** 2) / (2 * self.distance_sigma ** 2))  # [batch_size, 1]
                 
-                prob_shape = prob.shape  # [batch_size, dim, num_heads]
-                expanded_weights = node_distance_weights.unsqueeze(-1).expand(-1, prob_shape[1], prob_shape[2])
+                expanded_weights = node_distance_weights.unsqueeze(-1)
                 combined_weights = prob * expanded_weights
                 combined_weights = combined_weights / (combined_weights.sum(dim=1, keepdim=True) + 1e-10)
+                weights_avg = combined_weights.mean(dim=2)  # [batch_size, dim]
                 
-                x = torch.einsum('bdn,bd->bd', combined_weights, value)
+                x = torch.sum(weights_avg.unsqueeze(2) * value_proj.unsqueeze(1), dim=1)
             else:
-                x = torch.einsum('bdn,bd->bd', prob, value)
+                weights_avg = prob.mean(dim=2)  # [batch_size, dim]
+                
+                x = torch.sum(weights_avg.unsqueeze(2) * value_proj.unsqueeze(1), dim=1)
         
         elif self.attention == 'distance':
             raise NotImplementedError()
