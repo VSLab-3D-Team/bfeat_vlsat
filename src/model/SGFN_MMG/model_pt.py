@@ -42,7 +42,7 @@ class Mmgnet(BaseModel):
         self.flow = 'target_to_source'
         self.clip_feat_dim = self.config.MODEL.clip_feat_dim
         dim_point_feature = 512 # 768
-        dim_edge_feature = 512
+        dim_edge_feature = 256 # 512
         self.momentum = 0.1
         self.model_pre = None
         
