@@ -8,7 +8,8 @@ from src.model.model_utils.model_base import BaseModel
 from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
 from src.utils.eval_utils_recall import *
-from src.model.model_utils.network_MMGpt import MMG_single
+# from src.model.model_utils.network_MMGpt import MMG_single
+from src.model.model_utils.network_MMG import MMG_single
 from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
@@ -83,7 +84,7 @@ class Mmgnet(BaseModel):
             attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
             DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
-            use_distance_mask=True,
+            # use_distance_mask=True,
         )
         
         # self.proj_clip_edge = build_mlp([
