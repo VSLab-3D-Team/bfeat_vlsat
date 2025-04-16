@@ -33,8 +33,12 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             num_heads=num_heads, use_bn=use_bn, attention=attention, 
             use_edge=use_edge, use_bidirectional=use_bidirectional, **kwargs)
         
-        self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
-                            do_bn=use_bn, on_last=False)
+        if use_bidirectional:
+            self.prop = build_mlp([dim_node+dim_atten*2, dim_node+dim_atten, dim_node],
+                                do_bn=use_bn, on_last=False)
+        else:
+            self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
+                                do_bn=use_bn, on_last=False)
 
     def forward(self, x, edge_feature, edge_index, weight=None, istrain=False):
         assert x.ndim == 2
@@ -58,15 +62,23 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             xx, gcn_edge_feature, prob = self.edgeatten(
                 x_i, edge_feature, x_j, reverse_edge=reverse_edge_feature, weight=weight, istrain=istrain
             )
+            
+            xx_in = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
+            
+            xx_out = self.index_aggr(xx, edge_index_reverse, dim_size=x.shape[0])
+            
+            xx_combined = self.prop(torch.cat([x, xx_in, xx_out], dim=1))
+            
+            return xx_combined, gcn_edge_feature
         else:
             xx, gcn_edge_feature, prob = self.edgeatten(
                 x_i, edge_feature, x_j, weight=weight, istrain=istrain
             )
-        
-        xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
-        xx = self.prop(torch.cat([x, xx], dim=1))
-        
-        return xx, gcn_edge_feature
+            
+            xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
+            xx = self.prop(torch.cat([x, xx], dim=1))
+            
+            return xx, gcn_edge_feature
   
 
 class MultiHeadedEdgeAttention(torch.nn.Module):
