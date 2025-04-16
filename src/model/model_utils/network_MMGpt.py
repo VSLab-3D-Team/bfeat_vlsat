@@ -356,7 +356,7 @@ class BidirectionalEdgeLayer(MessagePassing):
         self.nn_edge_update = build_mlp([dim_node*2+dim_edge*2, dim_node+dim_edge*2, dim_edge],
                                        do_bn=use_bn, on_last=False)
         
-        self.edge_attention_mlp = build_mlp([dim_edge*2, dim_edge], do_bn=use_bn, on_last=False)
+        self.edge_attention_mlp = build_mlp([dim_edge*2, dim_node], do_bn=use_bn, on_last=False) # 임시 수정
         
         self.nn_node_update = build_mlp([dim_node+dim_edge, dim_node+dim_edge, dim_node],
                                        do_bn=use_bn, on_last=False)
