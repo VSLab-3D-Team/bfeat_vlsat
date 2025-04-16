@@ -7,11 +7,11 @@ import torch.nn.functional as F
 from src.model.model_utils.network_util import (MLP, build_mlp)
 from src.model.transformer.attention import MultiHeadAttention
 
-from torch_geometric.nn import MessagePassing
-from torch_scatter import scatter
+# from torch_geometric.nn import MessagePassing
+# from torch_scatter import scatter
 import math
-from torch import Tensor
-from typing import Optional
+# from torch import Tensor
+# from typing import Optional
 
 from torch_scatter import scatter_add, scatter_mean, scatter_max
 
@@ -40,6 +40,13 @@ class Aggre_Index(torch.nn.Module):
         else:
             row, col = edge_index[0], edge_index[1]
         
+        if edge_weight is not None:
+            if edge_weight.numel() != x.size(0):
+                if edge_weight.numel() > x.size(0):
+                    edge_weight = edge_weight[:x.size(0)]
+                else:
+                    edge_weight = None
+        
         if self.aggr == 'add' or self.aggr == 'sum':
             if edge_weight is not None:
                 x = x * edge_weight.view(-1, 1)
@@ -57,21 +64,21 @@ class Aggre_Index(torch.nn.Module):
             
         return out
 
-
-class GraphEdgeAttenNetwork(torch.nn.Module):
+class ImprovedGraphEdgeAttenNetwork(torch.nn.Module):
     def __init__(self, num_heads, dim_node, dim_edge, dim_atten, aggr='max', use_bn=False,
-                 flow='target_to_source', attention='fat', use_edge:bool=True, use_bidirectional:bool=True,
-                 use_distance_mask:bool=True, **kwargs):
+                 flow='target_to_source', attention='fat', use_edge:bool=True, 
+                 use_distance_mask:bool=True, use_node_attention:bool=False, **kwargs):
         super().__init__()
-        self.name = 'edgeatten'
+        self.name = 'improved_edgeatten'
         self.dim_node = dim_node
         self.dim_edge = dim_edge
-        self.use_bidirectional = use_bidirectional
         self.use_distance_mask = use_distance_mask
+        self.use_node_attention = use_node_attention
+        self.num_heads = num_heads
         self.index_get = Gen_Index(flow=flow)
         self.index_aggr = Aggre_Index(aggr=aggr, flow=flow)
         
-        self.edgeatten = MultiHeadedEdgeAttention(
+        self.edgeatten = ImprovedMultiHeadedEdgeAttention(
             dim_node=dim_node, dim_edge=dim_edge, dim_atten=dim_atten,
             num_heads=num_heads, use_bn=use_bn, attention=attention, 
             use_edge=use_edge, use_distance_mask=use_distance_mask, **kwargs)
@@ -81,6 +88,89 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         
         self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
                             do_bn=use_bn, on_last=False)
+        
+        if self.use_node_attention:
+            attn_dropout = kwargs.get('DROP_OUT_ATTEN', 0.3)
+            self.node_distance_mlp = build_mlp([1, 32, 1], do_bn=False, on_last=False)
+            
+            self.mhsa_q = torch.nn.Linear(dim_node, dim_node)
+            self.mhsa_k = torch.nn.Linear(dim_node, dim_node)
+            self.mhsa_v = torch.nn.Linear(dim_node, dim_node)
+            
+            self.mhsa_out = torch.nn.Linear(dim_node, dim_node)
+            
+            self.layer_norm1 = torch.nn.LayerNorm(dim_node)
+            self.layer_norm2 = torch.nn.LayerNorm(dim_node)
+            
+            self.ffn = torch.nn.Sequential(
+                torch.nn.Linear(dim_node, dim_node * 4),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(attn_dropout),
+                torch.nn.Linear(dim_node * 4, dim_node)
+            )
+            
+            self.dropout = torch.nn.Dropout(attn_dropout)
+
+    def create_node_distance_mask(self, node_positions):
+        if not self.use_node_attention:
+            return None
+            
+        num_nodes = node_positions.size(0)
+        distance_matrix = torch.zeros((num_nodes, num_nodes), device=node_positions.device)
+        
+        for i in range(num_nodes):
+            diff = node_positions[i].unsqueeze(0) - node_positions
+            distance_matrix[i] = torch.norm(diff, p=2, dim=1)
+        
+        input_tensor = distance_matrix.view(-1, 1)
+        output = self.node_distance_mlp(input_tensor)
+        
+        attention_mask = torch.sigmoid(output).view(num_nodes, num_nodes)
+        return attention_mask
+    
+    def apply_mhsa_with_distance_mask(self, x, distance_mask=None):
+        if not self.use_node_attention:
+            return x
+            
+        batch_size, seq_len = x.size(0), x.size(0)  # batch_size = 노드 수, seq_len = 노드 수
+        head_dim = self.dim_node // self.num_heads
+        
+        residual = x
+        x = self.layer_norm1(x)
+        
+        q = self.mhsa_q(x).view(batch_size, self.num_heads, head_dim)  # [N, H, D/H]
+        k = self.mhsa_k(x).view(batch_size, self.num_heads, head_dim)  # [N, H, D/H]
+        v = self.mhsa_v(x).view(batch_size, self.num_heads, head_dim)  # [N, H, D/H]
+        
+        q = q.permute(1, 0, 2)  # [H, N, D/H]
+        k = k.permute(1, 0, 2)  # [H, N, D/H]
+        v = v.permute(1, 0, 2)  # [H, N, D/H]
+        
+        attn_scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(head_dim)  # [H, N, N]
+        
+        if distance_mask is not None:
+            distance_mask = distance_mask.unsqueeze(0).expand(self.num_heads, -1, -1)  # [H, N, N]
+            attn_scores = attn_scores * distance_mask
+        
+        attn_weights = F.softmax(attn_scores, dim=-1)  # [H, N, N]
+        attn_weights = self.dropout(attn_weights)
+        
+        out = torch.matmul(attn_weights, v)  # [H, N, D/H]
+        
+        out = out.permute(1, 0, 2).contiguous().view(batch_size, -1)  # [N, D]
+        
+        out = self.mhsa_out(out)
+        out = self.dropout(out)
+        
+        out = out + residual
+        
+        residual = out
+        out = self.layer_norm2(out)
+        out = self.ffn(out)
+        out = self.dropout(out)
+        out = out + residual
+        
+        return out
 
     def forward(self, x, edge_feature, edge_index, weight=None, istrain=False):
         assert x.ndim == 2
@@ -97,7 +187,6 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             if (tgt.item(), src.item()) in edge_dict:
                 reverse_indices.append(edge_dict[(tgt.item(), src.item())])
             else:
-                # if no reverse edge
                 reverse_indices.append(edge_dict[(src.item(), tgt.item())])
         
         reverse_indices = torch.tensor(reverse_indices, device=edge_feature.device)
@@ -115,49 +204,50 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             x_i, edge_feature, reverse_edge_feature, x_j, dist_info, istrain=istrain
         )
         
-        src_mask = edge_index.new_zeros(edge_index.size(1), dtype=torch.bool)
-        for i in range(x.size(0)):
-            src_mask |= (edge_index[0] == i)
+        if isinstance(attn_weights, torch.Tensor):
+            if attn_weights.numel() != edge_index.size(1):
+                if attn_weights.numel() > edge_index.size(1):
+                    attn_weights = attn_weights[:edge_index.size(1)]
+                else:
+                    attn_weights = None
+        
+        src_mask = (edge_index[0].unsqueeze(0) == torch.arange(x.size(0), device=x.device).unsqueeze(1))
+        tgt_mask = (edge_index[1].unsqueeze(0) == torch.arange(x.size(0), device=x.device).unsqueeze(1))
         
         src_edge_feats = torch.zeros(x.size(0), self.dim_edge, device=edge_feature.device)
-        for i in range(edge_feature.size(0)):
-            if src_mask[i]:
-                src_node = edge_index[0, i].item()
-                src_edge_feats[src_node] += edge_feature[i]
-        
-        tgt_mask = edge_index.new_zeros(edge_index.size(1), dtype=torch.bool)
-        for i in range(x.size(0)):
-            tgt_mask |= (edge_index[1] == i)
-        
         tgt_edge_feats = torch.zeros(x.size(0), self.dim_edge, device=edge_feature.device)
-        for i in range(edge_feature.size(0)):
-            if tgt_mask[i]:
-                tgt_node = edge_index[1, i].item()
-                tgt_edge_feats[tgt_node] += edge_feature[i]
+        
+        for i in range(x.size(0)):
+            src_indices = src_mask[i].nonzero(as_tuple=True)[0]
+            if src_indices.numel() > 0:
+                src_edge_feats[i] = updated_edge_feature[src_indices].sum(dim=0)
+            
+            tgt_indices = tgt_mask[i].nonzero(as_tuple=True)[0]
+            if tgt_indices.numel() > 0:
+                tgt_edge_feats[i] = updated_edge_feature[tgt_indices].sum(dim=0)
         
         A_epsilon = torch.cat([src_edge_feats, tgt_edge_feats], dim=1)
-        
-        f_v_bar = F.relu(v_bar)
-        
         beta_A_epsilon = torch.sigmoid(self.twinning_attn_proj(A_epsilon))
         
+        f_v_bar = F.relu(v_bar)
         v_bar_aggr = self.index_aggr(f_v_bar, edge_index, edge_weight=attn_weights, dim_size=x.size(0))
-        
         v_new = v_bar_aggr * beta_A_epsilon
-        
         v_next = self.prop(torch.cat([x, v_new], dim=1))
         
+        if self.use_node_attention and weight is not None:
+            node_distance_mask = self.create_node_distance_mask(weight)
+            v_next = self.apply_mhsa_with_distance_mask(v_next, node_distance_mask)
+        
         return v_next, updated_edge_feature
-  
 
-class MultiHeadedEdgeAttention(torch.nn.Module):
+class ImprovedMultiHeadedEdgeAttention(torch.nn.Module):
     def __init__(self, num_heads: int, dim_node: int, dim_edge: int, dim_atten: int, use_bn=False,
                  attention='fat', use_edge:bool=True, use_distance_mask:bool=True, **kwargs):
         super().__init__()
         assert dim_node % num_heads == 0
         assert dim_edge % num_heads == 0
         assert dim_atten % num_heads == 0
-        self.name = 'MultiHeadedEdgeAttention'
+        self.name = 'ImprovedMultiHeadedEdgeAttention'
         self.dim_node = dim_node
         self.dim_edge = dim_edge
         self.d_n = d_n = dim_node // num_heads
@@ -170,9 +260,7 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         self.nn_edge = build_mlp([dim_node*2+dim_edge*2, dim_node+dim_edge*2, dim_edge],
                           do_bn=use_bn, on_last=False)
         
-        DROP_OUT_ATTEN = None
-        if 'DROP_OUT_ATTEN' in kwargs:
-            DROP_OUT_ATTEN = kwargs['DROP_OUT_ATTEN']
+        DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.3)
         
         self.attention = attention
         assert self.attention in ['fat', 'distance']
@@ -188,14 +276,16 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             self.proj_value = build_mlp([dim_node, dim_atten])
             
             if use_distance_mask:
-                self.distance_embedding = build_mlp([3, dim_node//2, dim_node])
+                self.distance_embedding = build_mlp([4, dim_node//2, 1], do_bn=use_bn)
         
         elif self.attention == 'distance':
             self.proj_query = build_mlp([dim_node, dim_node])
             self.proj_key = build_mlp([dim_node, dim_node])
             self.proj_value = build_mlp([dim_node, dim_atten])
             
-            self.distance_embedding = build_mlp([3, dim_node//2, dim_node])
+            self.distance_embedding = build_mlp([4, dim_node//2, dim_node])
+        
+        self.dropout = torch.nn.Dropout(DROP_OUT_ATTEN)
     
     def forward(self, query, edge, reverse_edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
@@ -224,7 +314,7 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             prob = prob.softmax(1)
             x = torch.einsum('bm,bm->bm', prob.reshape_as(value), value)
             
-            return x, edge_feature, prob
+            return x, edge_feature, prob.reshape(-1)
         
         elif self.attention == 'distance':
             q = self.proj_query(query).view(batch_dim, self.num_heads, -1)
@@ -234,166 +324,33 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             attn_scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
             
             if weight is not None:
-                distance_embed = self.distance_embedding(weight).view(batch_dim, self.num_heads, -1)
-                
-                attn_scores = attn_scores + distance_embed
-                
-                # # threshold-based hard masking
-                # mask = (weight[:, 2] > 5.0).float() * -1e9
-                # attn_scores = attn_scores + mask.unsqueeze(1).unsqueeze(2)
+                try:
+                    distance_embed = self.distance_embedding(weight)
+                    distance_embed = distance_embed.view(batch_dim, self.num_heads, -1)
+                    
+                    attn_scores = attn_scores + distance_embed.unsqueeze(-1)
+                    
+                    # mask = (weight[:, 3] > 5.0).float() * -1e9
+                    # attn_scores = attn_scores + mask.unsqueeze(1).unsqueeze(2)
+                except Exception as e:
+                    print(f"Error in distance embedding: {e}")
+                    print(f"weight shape: {weight.shape}")
             
             attn_weights = F.softmax(attn_scores, dim=-1)
+            attn_weights = self.dropout(attn_weights)
             
             output = torch.matmul(attn_weights, v).view(batch_dim, -1)
             
-            return output, edge_feature, attn_weights.view(-1)
+            return output, edge_feature, attn_weights.reshape(-1)
         
         else:
             raise NotImplementedError('')
-    
-    
-class MMG(torch.nn.Module):
-
-    def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr= 'max', 
-                 use_bn=False,flow='target_to_source', attention = 'fat', 
-                 hidden_size=512, depth=1, use_edge:bool=True, **kwargs,
-                 ):
-        
-        super().__init__()
-
-        self.num_heads = num_heads
-        self.depth = depth
-
-        self.self_attn = nn.ModuleList(
-            MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) for i in range(depth))
-
-        self.cross_attn = nn.ModuleList(
-            MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) for i in range(depth))
-
-        self.cross_attn_rel = nn.ModuleList(
-            MultiHeadAttention(d_model=dim_edge, d_k=dim_edge // num_heads, d_v=dim_edge // num_heads, h=num_heads) for i in range(depth))
-        
-        self.gcn_2ds = torch.nn.ModuleList()
-        self.gcn_3ds = torch.nn.ModuleList()
-        
-        for _ in range(self.depth):
-
-            self.gcn_2ds.append(GraphEdgeAttenNetwork(
-                            num_heads,
-                            dim_node,
-                            dim_edge,
-                            dim_atten,
-                            aggr,
-                            use_bn=use_bn,
-                            flow=flow,
-                            attention=attention,
-                            use_edge=use_edge, 
-                            **kwargs))
-            
-            self.gcn_3ds.append(GraphEdgeAttenNetwork(
-                            num_heads,
-                            dim_node,
-                            dim_edge,
-                            dim_atten,
-                            aggr,
-                            use_bn=use_bn,
-                            flow=flow,
-                            attention=attention,
-                            use_edge=use_edge, 
-                            **kwargs))
-           
-        self.self_attn_fc = nn.Sequential(  # 11 32 32 4(head)
-            nn.Linear(4, 32),  # xyz, dist
-            nn.ReLU(),
-            nn.LayerNorm(32),
-            nn.Linear(32, 32),
-            nn.ReLU(),
-            nn.LayerNorm(32),
-            nn.Linear(32, num_heads)
-        )
-        
-        self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
-    
-    
-    def forward(self, obj_feature_3d, obj_feature_2d, edge_feature_3d, edge_feature_2d, edge_index, batch_ids, obj_center=None, discriptor=None, istrain=False):
-
-        # compute weight for obj
-        if obj_center is not None:
-            # get attention weight for object
-            batch_size = batch_ids.max().item() + 1
-            N_K = obj_feature_3d.shape[0]
-            obj_mask = torch.zeros(1, 1, N_K, N_K).cuda()
-            obj_distance_weight = torch.zeros(1, self.num_heads, N_K, N_K).cuda()
-            count = 0
-
-            for i in range(batch_size):
-
-                idx_i = torch.where(batch_ids == i)[0]
-                obj_mask[:, :, count:count + len(idx_i), count:count + len(idx_i)] = 1
-            
-                center_A = obj_center[None, idx_i, :].clone().detach().repeat(len(idx_i), 1, 1)
-                center_B = obj_center[idx_i, None, :].clone().detach().repeat(1, len(idx_i), 1)
-                center_dist = (center_A - center_B)
-                dist = center_dist.pow(2)
-                dist = torch.sqrt(torch.sum(dist, dim=-1))[:, :, None]
-                weights = torch.cat([center_dist, dist], dim=-1).unsqueeze(0)  # 1 N N 4
-                dist_weights = self.self_attn_fc(weights).permute(0,3,1,2)  # 1 num_heads N N
-                
-                attention_matrix_way = 'add'
-                obj_distance_weight[:, :, count:count + len(idx_i), count:count + len(idx_i)] = dist_weights
-
-                count += len(idx_i)
-        else:
-            obj_mask = None
-            obj_distance = None
-            attention_matrix_way = 'mul'
-
-
-        for i in range(self.depth):
-
-            obj_feature_3d = obj_feature_3d.unsqueeze(0)
-            obj_feature_2d = obj_feature_2d.unsqueeze(0)
-            
-            obj_feature_3d = self.self_attn[i](obj_feature_3d, obj_feature_3d, obj_feature_3d, attention_weights=obj_distance_weight, way=attention_matrix_way, attention_mask=obj_mask, use_knn=False)
-            obj_feature_2d = self.cross_attn[i](obj_feature_2d, obj_feature_3d, obj_feature_3d, attention_weights=obj_distance_weight, way=attention_matrix_way, attention_mask=obj_mask, use_knn=False)
-            
-            obj_feature_3d = obj_feature_3d.squeeze(0)
-            obj_feature_2d = obj_feature_2d.squeeze(0)  
-
-
-            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
-            obj_feature_2d, edge_feature_2d = self.gcn_2ds[i](obj_feature_2d, edge_feature_2d, edge_index, istrain=istrain)
-
-            
-            edge_feature_2d = edge_feature_2d.unsqueeze(0)
-            edge_feature_3d = edge_feature_3d.unsqueeze(0)
-            
-            edge_feature_2d = self.cross_attn_rel[i](edge_feature_2d, edge_feature_3d, edge_feature_3d, use_knn=False)
-            
-            edge_feature_2d = edge_feature_2d.squeeze(0)
-            edge_feature_3d = edge_feature_3d.squeeze(0)
-
-            if i < (self.depth-1) or self.depth==1:
-                
-                obj_feature_3d = F.relu(obj_feature_3d)
-                obj_feature_3d = self.drop_out(obj_feature_3d)
-                
-                obj_feature_2d = F.relu(obj_feature_2d)
-                obj_feature_2d = self.drop_out(obj_feature_2d)
-
-                edge_feature_3d = F.relu(edge_feature_3d)
-                edge_feature_3d = self.drop_out(edge_feature_3d)
-
-                edge_feature_2d = F.relu(edge_feature_2d)
-                edge_feature_2d = self.drop_out(edge_feature_2d)
-        
-        return obj_feature_3d, obj_feature_2d, edge_feature_3d, edge_feature_2d
-
 
 class MMG_single(torch.nn.Module):
     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr='max', 
                  use_bn=False, flow='target_to_source', attention='fat', 
-                 hidden_size=512, depth=1, use_edge:bool=True, use_bidirectional:bool=True, **kwargs):
+                 hidden_size=512, depth=1, use_edge:bool=True, 
+                 use_distance_mask:bool=True, use_node_attention:bool=False, **kwargs):
         
         super().__init__()
 
@@ -403,7 +360,7 @@ class MMG_single(torch.nn.Module):
         self.gcn_3ds = torch.nn.ModuleList()
         
         for _ in range(self.depth):
-            self.gcn_3ds.append(GraphEdgeAttenNetwork(
+            self.gcn_3ds.append(ImprovedGraphEdgeAttenNetwork(
                             num_heads,
                             dim_node,
                             dim_edge,
@@ -413,32 +370,173 @@ class MMG_single(torch.nn.Module):
                             flow=flow,
                             attention=attention,
                             use_edge=use_edge,
-                            use_bidirectional=use_bidirectional,
+                            use_distance_mask=use_distance_mask,
+                            use_node_attention=use_node_attention,
                             **kwargs))
         
-        self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
+        self.drop_out = torch.nn.Dropout(kwargs.get('DROP_OUT_ATTEN', 0.3))
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
         for i in range(self.depth):
-            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](
-                obj_feature_3d, 
-                edge_feature_3d, 
-                edge_index, 
-                weight=obj_center,  
-                istrain=istrain
-            )
-            
-            if i < (self.depth-1) or self.depth==1:
-                obj_feature_3d = F.relu(obj_feature_3d)
-                obj_feature_3d = self.drop_out(obj_feature_3d)
+            try:
+                obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](
+                    obj_feature_3d, 
+                    edge_feature_3d, 
+                    edge_index, 
+                    weight=obj_center,  
+                    istrain=istrain
+                )
                 
-                edge_feature_3d = F.relu(edge_feature_3d)
-                edge_feature_3d = self.drop_out(edge_feature_3d)
+                if i < (self.depth-1) or self.depth==1:
+                    obj_feature_3d = F.relu(obj_feature_3d)
+                    obj_feature_3d = self.drop_out(obj_feature_3d)
+                    
+                    edge_feature_3d = F.relu(edge_feature_3d)
+                    edge_feature_3d = self.drop_out(edge_feature_3d)
+            except Exception as e:
+                print(f"Error in layer {i}: {e}")
+                return obj_feature_3d, edge_feature_3d
         
         return obj_feature_3d, edge_feature_3d
 
 
+# class MMG(torch.nn.Module):
+
+#     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr= 'max', 
+#                  use_bn=False,flow='target_to_source', attention = 'fat', 
+#                  hidden_size=512, depth=1, use_edge:bool=True, **kwargs,
+#                  ):
+        
+#         super().__init__()
+
+#         self.num_heads = num_heads
+#         self.depth = depth
+
+#         self.self_attn = nn.ModuleList(
+#             MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) for i in range(depth))
+
+#         self.cross_attn = nn.ModuleList(
+#             MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) for i in range(depth))
+
+#         self.cross_attn_rel = nn.ModuleList(
+#             MultiHeadAttention(d_model=dim_edge, d_k=dim_edge // num_heads, d_v=dim_edge // num_heads, h=num_heads) for i in range(depth))
+        
+#         self.gcn_2ds = torch.nn.ModuleList()
+#         self.gcn_3ds = torch.nn.ModuleList()
+        
+#         for _ in range(self.depth):
+
+#             self.gcn_2ds.append(GraphEdgeAttenNetwork(
+#                             num_heads,
+#                             dim_node,
+#                             dim_edge,
+#                             dim_atten,
+#                             aggr,
+#                             use_bn=use_bn,
+#                             flow=flow,
+#                             attention=attention,
+#                             use_edge=use_edge, 
+#                             **kwargs))
+            
+#             self.gcn_3ds.append(GraphEdgeAttenNetwork(
+#                             num_heads,
+#                             dim_node,
+#                             dim_edge,
+#                             dim_atten,
+#                             aggr,
+#                             use_bn=use_bn,
+#                             flow=flow,
+#                             attention=attention,
+#                             use_edge=use_edge, 
+#                             **kwargs))
+           
+#         self.self_attn_fc = nn.Sequential(  # 11 32 32 4(head)
+#             nn.Linear(4, 32),  # xyz, dist
+#             nn.ReLU(),
+#             nn.LayerNorm(32),
+#             nn.Linear(32, 32),
+#             nn.ReLU(),
+#             nn.LayerNorm(32),
+#             nn.Linear(32, num_heads)
+#         )
+        
+#         self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
+    
+    
+#     def forward(self, obj_feature_3d, obj_feature_2d, edge_feature_3d, edge_feature_2d, edge_index, batch_ids, obj_center=None, discriptor=None, istrain=False):
+
+#         # compute weight for obj
+#         if obj_center is not None:
+#             # get attention weight for object
+#             batch_size = batch_ids.max().item() + 1
+#             N_K = obj_feature_3d.shape[0]
+#             obj_mask = torch.zeros(1, 1, N_K, N_K).cuda()
+#             obj_distance_weight = torch.zeros(1, self.num_heads, N_K, N_K).cuda()
+#             count = 0
+
+#             for i in range(batch_size):
+
+#                 idx_i = torch.where(batch_ids == i)[0]
+#                 obj_mask[:, :, count:count + len(idx_i), count:count + len(idx_i)] = 1
+            
+#                 center_A = obj_center[None, idx_i, :].clone().detach().repeat(len(idx_i), 1, 1)
+#                 center_B = obj_center[idx_i, None, :].clone().detach().repeat(1, len(idx_i), 1)
+#                 center_dist = (center_A - center_B)
+#                 dist = center_dist.pow(2)
+#                 dist = torch.sqrt(torch.sum(dist, dim=-1))[:, :, None]
+#                 weights = torch.cat([center_dist, dist], dim=-1).unsqueeze(0)  # 1 N N 4
+#                 dist_weights = self.self_attn_fc(weights).permute(0,3,1,2)  # 1 num_heads N N
+                
+#                 attention_matrix_way = 'add'
+#                 obj_distance_weight[:, :, count:count + len(idx_i), count:count + len(idx_i)] = dist_weights
+
+#                 count += len(idx_i)
+#         else:
+#             obj_mask = None
+#             obj_distance = None
+#             attention_matrix_way = 'mul'
+
+
+#         for i in range(self.depth):
+
+#             obj_feature_3d = obj_feature_3d.unsqueeze(0)
+#             obj_feature_2d = obj_feature_2d.unsqueeze(0)
+            
+#             obj_feature_3d = self.self_attn[i](obj_feature_3d, obj_feature_3d, obj_feature_3d, attention_weights=obj_distance_weight, way=attention_matrix_way, attention_mask=obj_mask, use_knn=False)
+#             obj_feature_2d = self.cross_attn[i](obj_feature_2d, obj_feature_3d, obj_feature_3d, attention_weights=obj_distance_weight, way=attention_matrix_way, attention_mask=obj_mask, use_knn=False)
+            
+#             obj_feature_3d = obj_feature_3d.squeeze(0)
+#             obj_feature_2d = obj_feature_2d.squeeze(0)  
+
+
+#             obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
+#             obj_feature_2d, edge_feature_2d = self.gcn_2ds[i](obj_feature_2d, edge_feature_2d, edge_index, istrain=istrain)
+
+            
+#             edge_feature_2d = edge_feature_2d.unsqueeze(0)
+#             edge_feature_3d = edge_feature_3d.unsqueeze(0)
+            
+#             edge_feature_2d = self.cross_attn_rel[i](edge_feature_2d, edge_feature_3d, edge_feature_3d, use_knn=False)
+            
+#             edge_feature_2d = edge_feature_2d.squeeze(0)
+#             edge_feature_3d = edge_feature_3d.squeeze(0)
+
+#             if i < (self.depth-1) or self.depth==1:
+                
+#                 obj_feature_3d = F.relu(obj_feature_3d)
+#                 obj_feature_3d = self.drop_out(obj_feature_3d)
+                
+#                 obj_feature_2d = F.relu(obj_feature_2d)
+#                 obj_feature_2d = self.drop_out(obj_feature_2d)
+
+#                 edge_feature_3d = F.relu(edge_feature_3d)
+#                 edge_feature_3d = self.drop_out(edge_feature_3d)
+
+#                 edge_feature_2d = F.relu(edge_feature_2d)
+#                 edge_feature_2d = self.drop_out(edge_feature_2d)
+        
+#         return obj_feature_3d, obj_feature_2d, edge_feature_3d, edge_feature_2d
 
 # class BidirectionalEdgeLayer(MessagePassing):
 #     def __init__(self,
