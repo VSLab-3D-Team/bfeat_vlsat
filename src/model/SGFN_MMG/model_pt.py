@@ -400,7 +400,7 @@ class Mmgnet(BaseModel):
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) # + 0.1 * (rel_mimic_3d) + rel_diff
+        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) + rel_diff
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
@@ -415,7 +415,7 @@ class Mmgnet(BaseModel):
         log = [("train/rel_loss", loss_rel_3d.detach().item()),
                 ("train/obj_loss", loss_obj_3d.detach().item()),
                 ("train/logit_scale", obj_logit_scale.detach().item()),
-                # ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
+                ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
                 ("train/loss", loss.detach().item()),
                 ("train/Obj_R1", obj_topk_list[0]),
                 ("train/Obj_R5", obj_topk_list[1]),
