@@ -8,7 +8,7 @@ from src.model.model_utils.model_base import BaseModel
 from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
 from src.utils.eval_utils_recall import *
-from src.model.model_utils.network_MMGpt import MMG_pt_single
+from src.model.model_utils.network_MMGpt import MMG_single
 from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
@@ -42,7 +42,7 @@ class Mmgnet(BaseModel):
         self.flow = 'target_to_source'
         self.clip_feat_dim = self.config.MODEL.clip_feat_dim
         dim_point_feature = 512 # 768
-        dim_edge_feature = 256 # 임시 수정 512
+        dim_edge_feature = 512
         self.momentum = 0.1
         self.model_pre = None
         
@@ -72,7 +72,7 @@ class Mmgnet(BaseModel):
         #     feature_transform=mconfig.feature_transform,
         #     out_size=512)
         self.index_get = Gen_Index(flow=self.flow)
-        self.mmg = MMG_pt_single(
+        self.mmg = MMG_single(
             dim_node=dim_point_feature,
             dim_edge=dim_edge_feature,
             dim_atten=self.mconfig.DIM_ATTEN,
@@ -83,8 +83,8 @@ class Mmgnet(BaseModel):
             attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
             DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
-            use_distance_mask=self.mconfig.get('USE_DISTANCE_MASK', True),
-            use_node_attention=self.mconfig.get('USE_NODE_ATTENTION', False)
+            use_bidirectional=True,
+            use_distance_mask=True,
         )
         
         # self.proj_clip_edge = build_mlp([
@@ -99,7 +99,7 @@ class Mmgnet(BaseModel):
         ], do_bn=True, on_last=True)
 
         self.triplet_projector_3d = torch.nn.Sequential(
-            torch.nn.Linear(512 + 512 + 256, 512 * 2),  # 임시 수정 1280 -> 1024
+            torch.nn.Linear(512 * 3, 512 * 2),
             torch.nn.Dropout(0.5),
             torch.nn.ReLU(),
             torch.nn.Linear(512 * 2, 512)
@@ -119,12 +119,12 @@ class Mmgnet(BaseModel):
         if mconfig.multi_rel_outputs:
             self.rel_predictor_3d = PointNetRelClsMulti(
                 num_rel_class, 
-                in_size=dim_edge_feature,  # 임시 수정 256으로 변경
+                in_size=512, 
                 batch_norm=with_bn,drop_out=True)
         else:
             self.rel_predictor_3d = PointNetRelCls(
                 num_rel_class, 
-                in_size=dim_edge_feature,  # 임시 수정 256으로 변경
+                in_size=512, 
                 batch_norm=with_bn,drop_out=True)
             
         self.init_weight(obj_label_path=self.mconfig.obj_label_path, \

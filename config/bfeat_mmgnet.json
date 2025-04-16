@@ -46,7 +46,7 @@
       "edge_feature_size":256,
       "clip_feat_dim": 512, 
       "lambda_o": 0.1,
-      "DIM_ATTEN": 256,
+      "DIM_ATTEN": 512,
       "_WEIGHT_EDGE": ["BG", "DYNAMIC", "OCCU", "NONE"],
       "WEIGHT_EDGE": "DYNAMIC",
       "OBJ_EDGE": "NONE",
@@ -60,9 +60,7 @@
       "use_descriptor": true,
       "obj_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt",
       "rel_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/relations.txt",
-      "adapter_path":"/data/hkh7710/sy/vlsat/clip_adapter/checkpoint/origin_mean.pth",
-      "USE_DISTANCE_MASK": false,
-      "USE_NODE_ATTENTION ": false
+      "adapter_path":"/data/hkh7710/sy/vlsat/clip_adapter/checkpoint/origin_mean.pth"
     },
     "dataset": {
       "root": "/data/hkh7710/sy/vlsat/data/3DSSG_subset",
