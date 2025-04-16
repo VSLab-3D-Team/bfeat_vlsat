@@ -176,14 +176,15 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             
             if obj_centers is not None:
                 node_distance_weights = torch.exp(-(distances ** 2) / (2 * self.distance_sigma ** 2))  # [batch_size, 1]
-                node_distance_weights = node_distance_weights / node_distance_weights.sum()  
                 
-                combined_weights = prob * node_distance_weights
-                combined_weights = combined_weights / combined_weights.sum(dim=1, keepdim=True)  
+                prob_shape = prob.shape  # [batch_size, dim, num_heads]
+                expanded_weights = node_distance_weights.unsqueeze(-1).expand(-1, prob_shape[1], prob_shape[2])
+                combined_weights = prob * expanded_weights
+                combined_weights = combined_weights / (combined_weights.sum(dim=1, keepdim=True) + 1e-10)
                 
-                x = torch.einsum('bm,bm->bm', combined_weights.reshape_as(value), value)
+                x = torch.einsum('bdn,bd->bd', combined_weights, value)
             else:
-                x = torch.einsum('bm,bm->bm', prob.reshape_as(value), value)
+                x = torch.einsum('bdn,bd->bd', prob, value)
         
         elif self.attention == 'distance':
             raise NotImplementedError()
