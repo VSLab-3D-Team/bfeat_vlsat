@@ -42,7 +42,7 @@ class Mmgnet(BaseModel):
         self.flow = 'target_to_source'
         self.clip_feat_dim = self.config.MODEL.clip_feat_dim
         dim_point_feature = 512 # 768
-        dim_edge_feature = 256 # 512
+        dim_edge_feature = 256 # 임시 수정 512
         self.momentum = 0.1
         self.model_pre = None
         
@@ -99,7 +99,7 @@ class Mmgnet(BaseModel):
         ], do_bn=True, on_last=True)
 
         self.triplet_projector_3d = torch.nn.Sequential(
-            torch.nn.Linear(512 * 3, 512 * 2),
+            torch.nn.Linear(512 + 512 + 256, 512 * 2),  # 임시 수정 1280 -> 1024
             torch.nn.Dropout(0.5),
             torch.nn.ReLU(),
             torch.nn.Linear(512 * 2, 512)
