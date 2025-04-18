@@ -119,10 +119,12 @@ class DualAttentionMechanism(torch.nn.Module):
         
         balance = self.balance_network(edge).view(batch_dim, 1, 1)
         
-        geo_output = torch.einsum('bdh,bd->bd', geo_prob.reshape(batch_dim, -1, self.num_heads), value_proj)
-        sem_output = torch.einsum('bdh,bd->bd', sem_prob.reshape(batch_dim, -1, self.num_heads), value_proj)
+        value_proj_reshaped = value_proj.view(batch_dim, self.d_o, self.num_heads)
         
-        output = balance * geo_output + (1 - balance) * sem_output
+        geo_output = torch.sum(geo_prob * value_proj_reshaped, dim=1)
+        sem_output = torch.sum(sem_prob * value_proj_reshaped, dim=1)
+        
+        output = balance.squeeze(-1) * geo_output + (1 - balance.squeeze(-1)) * sem_output
         
         return output, edge_feature, balance.squeeze(-1).squeeze(-1)
 
