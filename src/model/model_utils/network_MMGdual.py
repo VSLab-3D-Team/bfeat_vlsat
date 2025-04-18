@@ -51,9 +51,9 @@ class DualAttentionMechanism(torch.nn.Module):
     def __init__(self, num_heads, dim_node, dim_edge, dim_atten, use_bn=False, 
                  use_edge=True, **kwargs):
         super().__init__()
-        assert dim_node % num_heads == 0
-        assert dim_edge % num_heads == 0
-        assert dim_atten % num_heads == 0
+        assert dim_node % num_heads == 0, f"dim_node ({dim_node}) must be divisible by num_heads ({num_heads})"
+        assert dim_edge % num_heads == 0, f"dim_edge ({dim_edge}) must be divisible by num_heads ({num_heads})"
+        assert dim_atten % num_heads == 0, f"dim_atten ({dim_atten}) must be divisible by num_heads ({num_heads})"
         
         self.name = 'DualAttentionMechanism'
         self.dim_node = dim_node
@@ -131,10 +131,17 @@ class DualAttentionMechanism(torch.nn.Module):
         
         value_proj_reshaped = value_proj.view(batch_dim, self.d_o, self.num_heads)
         
-        geo_output = torch.einsum('bdh,bd->bd', geo_prob, value_proj_reshaped)
-        sem_output = torch.einsum('bdh,bd->bd', sem_prob, value_proj_reshaped)
+        print(f"geo_prob shape: {geo_prob.shape}")
+        print(f"sem_prob shape: {sem_prob.shape}")
+        print(f"value_proj_reshaped shape: {value_proj_reshaped.shape}")
         
-        output = balance.squeeze(-1) * geo_output + (1 - balance.squeeze(-1)) * sem_output
+        geo_output = torch.sum(geo_prob * value_proj_reshaped, dim=(1, 2))
+        sem_output = torch.sum(sem_prob * value_proj_reshaped, dim=(1, 2))
+        
+        geo_output = geo_output.unsqueeze(1).expand(-1, self.dim_atten)
+        sem_output = sem_output.unsqueeze(1).expand(-1, self.dim_atten)
+        
+        output = balance.squeeze(-1).squeeze(-1).unsqueeze(1) * geo_output + (1 - balance.squeeze(-1).squeeze(-1).unsqueeze(1)) * sem_output
         
         return output, edge_feature, balance.squeeze(-1).squeeze(-1)
 
