@@ -12,6 +12,7 @@ class DualAttentionEdgeGAT(torch.nn.Module):
         self.name = 'dualedgeatten'
         self.dim_node = dim_node
         self.dim_edge = dim_edge
+        self.dim_atten = dim_atten
         self.index_get = Gen_Index(flow=flow)
         self.index_aggr = Aggre_Index(aggr=aggr, flow=flow)
 
@@ -26,10 +27,16 @@ class DualAttentionEdgeGAT(torch.nn.Module):
         assert x.ndim == 2
         assert edge_feature.ndim == 2
         
+        print(f"x shape: {x.shape}")
+        print(f"edge_feature shape: {edge_feature.shape}")
+        
         x_i, x_j = self.index_get(x, edge_index)
         
         xx, gcn_edge_feature, balance = self.edgeatten(
             x_i, edge_feature, x_j, geo_features, weight, istrain=istrain)
+        
+        print(f"xx shape: {xx.shape}")
+        print(f"torch.cat([x, xx], dim=1) shape: {torch.cat([x, xx], dim=1).shape}")
         
         xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
         xx = self.prop(torch.cat([x, xx], dim=1))
