@@ -51,13 +51,14 @@ class DualAttentionMechanism(torch.nn.Module):
     def __init__(self, num_heads, dim_node, dim_edge, dim_atten, use_bn=False, 
                  use_edge=True, **kwargs):
         super().__init__()
-        assert dim_node % num_heads == 0, f"dim_node ({dim_node}) must be divisible by num_heads ({num_heads})"
-        assert dim_edge % num_heads == 0, f"dim_edge ({dim_edge}) must be divisible by num_heads ({num_heads})"
-        assert dim_atten % num_heads == 0, f"dim_atten ({dim_atten}) must be divisible by num_heads ({num_heads})"
+        assert dim_node % num_heads == 0
+        assert dim_edge % num_heads == 0
+        assert dim_atten % num_heads == 0
         
         self.name = 'DualAttentionMechanism'
         self.dim_node = dim_node
         self.dim_edge = dim_edge
+        self.dim_atten = dim_atten
         self.d_n = d_n = dim_node // num_heads
         self.d_e = d_e = dim_edge // num_heads
         self.d_o = d_o = dim_atten // num_heads
@@ -70,14 +71,17 @@ class DualAttentionMechanism(torch.nn.Module):
         DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.1)
         
         if use_edge:
-            self.geo_nn = MLP([d_n + d_e + d_n, d_n + d_e, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            geo_input_dim = d_n + d_e + d_o  # query_proj + edge_proj + geo_proj
+            sem_input_dim = d_n + d_e        # query_proj + edge_proj
         else:
-            self.geo_nn = MLP([d_n + d_n, d_n * 2, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            geo_input_dim = d_n + d_o        # query_proj + geo_proj
+            sem_input_dim = d_n              # query_proj
         
-        if use_edge:
-            self.sem_nn = MLP([d_n + d_e, d_n + d_e, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
-        else:
-            self.sem_nn = MLP([d_n, d_n * 2, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+        print(f"geo_input_dim: {geo_input_dim}, sem_input_dim: {sem_input_dim}")
+        print(f"d_n: {d_n}, d_e: {d_e}, d_o: {d_o}, num_heads: {num_heads}")
+        
+        self.geo_nn = MLP([geo_input_dim, geo_input_dim, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+        self.sem_nn = MLP([sem_input_dim, sem_input_dim, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
         
         self.balance_network = nn.Sequential(
             nn.Linear(dim_edge, 128),
