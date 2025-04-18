@@ -35,10 +35,13 @@ class DualAttentionEdgeGAT(torch.nn.Module):
         xx, gcn_edge_feature, balance = self.edgeatten(
             x_i, edge_feature, x_j, geo_features, weight, istrain=istrain)
         
-        print(f"xx shape: {xx.shape}")
-        print(f"torch.cat([x, xx], dim=1) shape: {torch.cat([x, xx], dim=1).shape}")
+        print(f"xx shape before aggregation: {xx.shape}")
         
         xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
+        
+        print(f"xx shape after aggregation: {xx.shape}")
+        print(f"torch.cat([x, xx], dim=1) shape: {torch.cat([x, xx], dim=1).shape}")
+        
         xx = self.prop(torch.cat([x, xx], dim=1))
         
         return xx, gcn_edge_feature, balance
@@ -61,20 +64,20 @@ class DualAttentionMechanism(torch.nn.Module):
         self.num_heads = num_heads
         self.use_edge = use_edge
         
-        self.nn_edge = build_mlp([dim_node*2+dim_edge, (dim_node+dim_edge), dim_edge],
-                               do_bn=use_bn, on_last=False)
+        self.nn_edge = build_mlp([dim_node * 2 + dim_edge, (dim_node + dim_edge), dim_edge],
+                                  do_bn=use_bn, on_last=False)
         
         DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.1)
         
         if use_edge:
-            self.geo_nn = MLP([d_n+d_e+d_n, d_n+d_e, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            self.geo_nn = MLP([d_n + d_e + d_n, d_n + d_e, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
         else:
-            self.geo_nn = MLP([d_n+d_n, d_n*2, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            self.geo_nn = MLP([d_n + d_n, d_n * 2, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
         
         if use_edge:
-            self.sem_nn = MLP([d_n+d_e, d_n+d_e, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            self.sem_nn = MLP([d_n + d_e, d_n + d_e, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
         else:
-            self.sem_nn = MLP([d_n, d_n*2, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+            self.sem_nn = MLP([d_n, d_n * 2, dim_atten], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
         
         self.balance_network = nn.Sequential(
             nn.Linear(dim_edge, 128),
@@ -93,7 +96,7 @@ class DualAttentionMechanism(torch.nn.Module):
         self.proj_query = build_mlp([dim_node, dim_node])
         self.proj_value = build_mlp([dim_node, dim_atten])
         
-        self.proj_geo = build_mlp([11, dim_node])
+        self.proj_geo = build_mlp([11, dim_atten])
         
     def forward(self, query, edge, value, geo_features=None, weight=None, istrain=False):
         batch_dim = query.size(0)
@@ -106,7 +109,7 @@ class DualAttentionMechanism(torch.nn.Module):
         edge_proj = self.proj_edge(edge).view(batch_dim, self.d_e, self.num_heads)
         
         if geo_features is not None:
-            geo_proj = self.proj_geo(geo_features).view(batch_dim, self.d_n, self.num_heads)
+            geo_proj = self.proj_geo(geo_features).view(batch_dim, self.d_o, self.num_heads)
             if self.use_edge:
                 geo_input = torch.cat([query_proj, edge_proj, geo_proj], dim=1)
             else:
@@ -128,8 +131,8 @@ class DualAttentionMechanism(torch.nn.Module):
         
         value_proj_reshaped = value_proj.view(batch_dim, self.d_o, self.num_heads)
         
-        geo_output = torch.sum(geo_prob * value_proj_reshaped, dim=1)
-        sem_output = torch.sum(sem_prob * value_proj_reshaped, dim=1)
+        geo_output = torch.einsum('bdh,bd->bd', geo_prob, value_proj_reshaped)
+        sem_output = torch.einsum('bdh,bd->bd', sem_prob, value_proj_reshaped)
         
         output = balance.squeeze(-1) * geo_output + (1 - balance.squeeze(-1)) * sem_output
         
