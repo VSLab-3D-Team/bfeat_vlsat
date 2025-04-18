@@ -9,7 +9,8 @@ from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
 from src.utils.eval_utils_recall import *
 # from src.model.model_utils.network_MMGpt import MMG_single
-from src.model.model_utils.network_MMG import MMG_single
+# from src.model.model_utils.network_MMG import MMG_single
+from src.model.model_utils.network_MMGdual import MMG_dual
 from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
@@ -48,13 +49,6 @@ class Mmgnet(BaseModel):
         self.model_pre = None
         
         # Object Encoder
-        # self.obj_encoder = PointNetfeat(
-        #     global_feat=True, 
-        #     batch_norm=with_bn,
-        #     point_size=dim_point, 
-        #     input_transform=False,
-        #     feature_transform=mconfig.feature_transform,
-        #     out_size=dim_point_feature)   
         self.obj_encoder = PointNetEncoder("cuda", channel=self.dim_point)   
         self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
         self.obj_encoder = self.obj_encoder.eval()
@@ -64,16 +58,11 @@ class Mmgnet(BaseModel):
             dim_descriptor,
             dim_edge_feature,
             num_layers=8
-        ) #.to("cuda")
-        # self.rel_encoder_3d = PointNetfeat(
-        #     global_feat=True,
-        #     batch_norm=with_bn,
-        #     point_size=dim_point_rel,
-        #     input_transform=False,
-        #     feature_transform=mconfig.feature_transform,
-        #     out_size=512)
+        )
+        
         self.index_get = Gen_Index(flow=self.flow)
-        self.mmg = MMG_single(
+        
+        self.mmg = MMG_dual(
             dim_node=dim_point_feature,
             dim_edge=dim_edge_feature,
             dim_atten=self.mconfig.DIM_ATTEN,
@@ -81,16 +70,10 @@ class Mmgnet(BaseModel):
             num_heads=self.mconfig.NUM_HEADS,
             aggr=self.mconfig.GCN_AGGR,
             flow=self.flow,
-            attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
             DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
         )
         
-        # self.proj_clip_edge = build_mlp([
-        #     dim_edge_feature, 
-        #     dim_edge_feature // 2, 
-        #     dim_edge_feature
-        # ], do_bn=True, on_last=True)
         self.proj_geo_desc = build_mlp([
             dim_edge_feature, 
             dim_edge_feature // 4, 
@@ -247,30 +230,6 @@ class Mmgnet(BaseModel):
         obj_pair_feats = torch.vstack(obj_pair_feats)
         return obj_pair_feats
     
-    def compute_triplet_loss(self, obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices):
-        triplet_loss = []
-        obj_logits_3d_softmax = F.softmax(obj_logits_3d, dim=-1)
-        obj_logits_2d_softmax = F.softmax(obj_logits_2d, dim=-1)
-        for idx, i in enumerate(edge_indices):
-            obj_score_3d = obj_logits_3d_softmax[i[0]]
-            obj_score_2d = obj_logits_2d_softmax[i[0]]
-            sub_score_3d = obj_logits_3d_softmax[i[1]]
-            sub_score_2d = obj_logits_2d_softmax[i[1]]
-            rel_score_3d = rel_cls_3d[idx]
-            rel_score_2d = rel_cls_2d[idx]
-            node_score_3d = torch.einsum('n,m->nm', obj_score_3d, sub_score_3d)
-            node_score_2d = torch.einsum('n,m->nm', obj_score_2d, sub_score_2d)
-            triplet_score_3d = torch.einsum('nl,m->nlm', node_score_3d, rel_score_3d).reshape(-1)
-            triplet_score_2d = torch.einsum('nl,m->nlm', node_score_2d, rel_score_2d).reshape(-1)
-            triplet_loss.append(F.l1_loss(triplet_score_3d, triplet_score_2d.detach(), reduction='sum')) 
-            
-            # triplet_logits_3d_kl = F.softmax(triplet_score_3d.clone(), dim=-1)
-            # triplet_logits_2d_kl = F.softmax(triplet_score_2d.clone().detach(), dim=-1)
-            # triplet_loss.append(F.kl_div(triplet_logits_3d_kl.log(), triplet_logits_2d_kl, reduction='sum'))
-            
-        #return torch.sum(torch.tensor(triplet_loss))
-        return torch.mean(torch.tensor(triplet_loss))
-    
     def forward(self, obj_points, edge_indices, descriptor=None, batch_ids=None, istrain=False):
 
         with torch.no_grad():
@@ -288,10 +247,18 @@ class Mmgnet(BaseModel):
             x_i_feats, x_j_feats = self.index_get(obj_feature, edge_indices)
         rel_feature_3d = self.rel_encoder_3d(x_i_feats, x_j_feats, edge_feature.squeeze(-1))
 
+        
         obj_center = descriptor[:, :3].clone()
-        #obj_center = torch.randn_like(obj_feature[:, :3]).cuda()
-        gcn_obj_feature_3d, gcn_edge_feature_3d \
-            = self.mmg(obj_feature, rel_feature_3d, edge_indices, batch_ids, obj_center, istrain=istrain)
+
+        edge_geo_features = edge_feature.squeeze(-1)
+        
+        ''' Apply dual attention GAT '''
+        gcn_obj_feature_3d, gcn_edge_feature_3d, balance_values = self.mmg(
+            obj_feature, rel_feature_3d, edge_indices, batch_ids, 
+            obj_center=obj_center,
+            geo_features=edge_geo_features,
+            istrain=istrain
+        )
 
         gcn_edge_feature_3d_dis = self.generate_object_pair_features(gcn_obj_feature_3d, gcn_edge_feature_3d, edge_indices)
         gcn_edge_feature_3d_dis = self.triplet_projector_3d(gcn_edge_feature_3d_dis)
@@ -299,28 +266,19 @@ class Mmgnet(BaseModel):
         rel_cls_3d = self.rel_predictor_3d(gcn_edge_feature_3d)
         rel_pred_desc = self.proj_geo_desc(rel_feature_3d)
         
-        #if istrain:
         logit_scale = self.obj_logit_scale.exp()
-        #else:
-        #    logit_scale = 63.74
-
         obj_logits_3d = logit_scale * self.obj_predictor_3d(gcn_obj_feature_3d / gcn_obj_feature_3d.norm(dim=-1, keepdim=True))
         rel_diff = F.l1_loss(rel_pred_desc, edge_feature.squeeze(-1))
         
         if istrain:
-            return obj_logits_3d, rel_cls_3d, gcn_edge_feature_3d_dis, logit_scale, rel_diff
+            return obj_logits_3d, rel_cls_3d, gcn_edge_feature_3d_dis, logit_scale, rel_diff, balance_values
         else:
             return obj_logits_3d, rel_cls_3d
 
     def process_train(self, obj_points, obj_2d_feats, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
         self.iteration +=1    
-        obj_logits_3d, rel_cls_3d, edge_feature_3d, obj_logit_scale, rel_diff = \
+        obj_logits_3d, rel_cls_3d, edge_feature_3d, obj_logit_scale, rel_diff, balance_values = \
             self(obj_points, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=True)
-        
-        # compute loss for obj
-        # obj_logits_3d_kl = F.softmax(obj_logits_3d.clone(), dim=-1)
-        # obj_logits_2d_kl = F.softmax(obj_logits_2d.clone().detach(), dim=-1)
-        # loss_obj_KL_3d = F.kl_div(obj_logits_3d_kl.log(), obj_logits_2d_kl, reduction='batchmean')
         
         # compute loss for obj
         loss_obj_3d = F.cross_entropy(obj_logits_3d, gt_cls)
@@ -340,7 +298,6 @@ class Mmgnet(BaseModel):
                 if ignore_none_rel:
                     weight[0] = 0
                     weight *= 1e-2 # reduce the weight from ScanNet
-                    # print('set weight of none to 0')
                 if 'NONE_RATIO' in self.mconfig:
                     weight[0] *= self.mconfig.NONE_RATIO
                     
@@ -352,10 +309,6 @@ class Mmgnet(BaseModel):
                 weight = None
             else:
                 raise NotImplementedError("unknown weight_edge type")
-
-            # rel_logits_3d_kl = F.softmax(rel_cls_3d.clone().detach(), dim=-1)
-            # rel_logits_2d_kl = F.softmax(rel_cls_2d.clone(), dim=-1)
-            # loss_rel_KL_2d = F.kl_div(rel_logits_2d_kl.log(), rel_logits_3d_kl, reduction='sum')
 
             loss_rel_3d = F.binary_cross_entropy(rel_cls_3d, gt_rel_cls, weight=weight)
         else:
@@ -394,28 +347,24 @@ class Mmgnet(BaseModel):
 
         edge_feature_3d = edge_feature_3d / edge_feature_3d.norm(dim=-1, keepdim=True)
         rel_mimic_3d = F.l1_loss(edge_feature_3d, rel_text_feat)
-        #rel_mimic_3d = self.cosine_loss(edge_feature_3d, rel_text_feat, t=0.9)
-
-        # compute triplet loss
-        # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
+        
+        avg_balance = torch.cat([b.view(-1) for b in balance_values]).mean()
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) + rel_diff
-        #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
+        loss = lambda_o * loss_obj_3d + 3 * lambda_r * loss_rel_3d + 0.1 * rel_mimic_3d + rel_diff
         self.backward(loss)
         
-        # compute 3d metric
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach(), gt_cls, topk=11)
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
         top_k_rel = evaluate_topk_predicate(rel_cls_3d.detach(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
         obj_topk_list = [100 * (top_k_obj <= i).sum() / len(top_k_obj) for i in [1, 5, 10]]
         rel_topk_list = [100 * (top_k_rel <= i).sum() / len(top_k_rel) for i in [1, 3, 5]]
         
-        
         log = [("train/rel_loss", loss_rel_3d.detach().item()),
                 ("train/obj_loss", loss_obj_3d.detach().item()),
                 ("train/logit_scale", obj_logit_scale.detach().item()),
                 ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
                 ("train/loss", loss.detach().item()),
+                ("train/avg_balance", avg_balance.detach().item()),
                 ("train/Obj_R1", obj_topk_list[0]),
                 ("train/Obj_R5", obj_topk_list[1]),
                 ("train/Obj_R10", obj_topk_list[2]),
