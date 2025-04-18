@@ -86,7 +86,7 @@ class DualAttentionMechanism(torch.nn.Module):
         self.proj_query = build_mlp([dim_node, dim_node])
         self.proj_value = build_mlp([dim_node, dim_atten])
         
-        self.proj_geo = build_mlp([dim_edge, dim_node])
+        self.proj_geo = build_mlp([11, dim_node])
         
     def forward(self, query, edge, value, geo_features=None, weight=None, istrain=False):
         batch_dim = query.size(0)
@@ -128,7 +128,6 @@ class DualAttentionMechanism(torch.nn.Module):
 
 
 class MMG_dual(torch.nn.Module):
-    """이중 어텐션 메커니즘을 사용하는 메시지 패싱 네트워크"""
     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr='max', 
                  use_bn=False, flow='target_to_source', use_edge=True, 
                  hidden_size=512, depth=1, **kwargs):
