@@ -17,7 +17,7 @@ from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
 from clip_adapter.model import AdapterModel
 
-class UncertaintyCalibrationLoss(nn.Module):
+class UncertaintyCalibrationLoss(torch.nn.Module):
     def __init__(self, lambda_cal=0.1):
         super().__init__()
         self.lambda_cal = lambda_cal
