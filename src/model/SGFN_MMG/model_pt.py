@@ -17,30 +17,46 @@ from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
 from clip_adapter.model import AdapterModel
 
-class UncertaintyCalibrationLoss(torch.nn.Module):
+class UncertaintyCalibrationLoss(nn.Module):
+
     def __init__(self, lambda_cal=0.1):
         super().__init__()
         self.lambda_cal = lambda_cal
         
     def forward(self, predicted_uncertainty, pred_logits, true_labels):
-        if len(pred_logits.shape) > 1 and pred_logits.shape[1] > 1:
-            pred_labels = torch.argmax(pred_logits, dim=1)
-            error_indicator = (pred_labels != true_labels).float()
-        elif len(true_labels.shape) > 1 and true_labels.shape[1] > 1:
-            pred_labels = (pred_logits > 0.5).float()
-            error_indicator = (torch.sum(pred_labels != true_labels, dim=1) > 0).float()
-        else:
-            pred_labels = torch.argmax(pred_logits, dim=1)
-            error_indicator = (pred_labels != true_labels).float()
+        if len(true_labels.shape) > 1 and true_labels.shape[1] > 1:
+            pred_probs = torch.sigmoid(pred_logits) if pred_logits.shape == true_labels.shape else pred_logits
+            pred_labels = (pred_probs > 0.5).float()
             
-        if len(predicted_uncertainty.shape) == 2 and predicted_uncertainty.shape[1] == 2:
-            combined_uncertainty = torch.mean(predicted_uncertainty, dim=1)
-            calibration_loss = F.mse_loss(combined_uncertainty, error_indicator)
+            error_per_label = (pred_labels != true_labels).float()
+            error_indicator = (torch.sum(error_per_label, dim=1) > 0).float()
+            
+        elif len(pred_logits.shape) > 1 and pred_logits.shape[1] > 1:
+            pred_labels = torch.argmax(pred_logits, dim=1)
+            
+            if len(true_labels.shape) > 1 and true_labels.shape[1] > 1:
+                true_class = torch.argmax(true_labels, dim=1)
+            else:
+                true_class = true_labels
+                
+            error_indicator = (pred_labels != true_class).float()
+            
         else:
-            calibration_loss = F.mse_loss(predicted_uncertainty.squeeze(), error_indicator)
+            if pred_logits.shape != true_labels.shape:
+                pred_labels = torch.argmax(pred_logits, dim=1) if len(pred_logits.shape) > 1 else pred_logits
+            else:
+                pred_labels = pred_logits
+                
+            error_indicator = (pred_labels != true_labels).float()
+        
+        if len(predicted_uncertainty.shape) == 2 and predicted_uncertainty.shape[1] > 1:
+            combined_uncertainty = torch.mean(predicted_uncertainty, dim=1)
+        else:
+            combined_uncertainty = predicted_uncertainty.view(-1)
+        
+        calibration_loss = F.mse_loss(combined_uncertainty, error_indicator)
         
         return self.lambda_cal * calibration_loss
-
 class Mmgnet(BaseModel):
     def __init__(self, config, num_obj_class, num_rel_class, dim_descriptor=11):
         '''
