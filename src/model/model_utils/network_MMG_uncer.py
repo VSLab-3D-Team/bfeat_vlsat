@@ -124,9 +124,19 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         self.attention = attention
         assert self.attention in ['fat']
         
-        self.uncertainty_estimator = DualUncertaintyEstimator(dim_node)
-        self.uncertainty_propagation = UncertaintyPropagation(dim_edge, num_heads)
-        self.adaptive_temperature = AdaptiveTemperatureAttention(4, num_heads)
+        self.obj_uncertainty_estimator = nn.Sequential(
+            nn.Linear(dim_node, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+        )
+        
+        self.edge_uncertainty_estimator = nn.Sequential(
+            nn.Linear(dim_edge, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+        )
         
         if self.attention == 'fat':
             if use_edge:
@@ -137,14 +147,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             self.proj_edge  = build_mlp([dim_edge,dim_edge])
             self.proj_query = build_mlp([dim_node,dim_node])
             self.proj_value = build_mlp([dim_node,dim_atten])
-            
-            self.uncertainty_gate = nn.Sequential(
-                nn.Linear(2, 32),
-                nn.ReLU(),
-                nn.Linear(32, num_heads),
-                nn.Sigmoid()
-            )
-            
         elif self.attention == 'distance':
             self.proj_value = build_mlp([dim_node,dim_atten])
 
@@ -152,43 +154,24 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
     def forward(self, query, edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
         
-        query_aleatoric, query_epistemic, query_uncertainty = self.uncertainty_estimator(query)
-        value_aleatoric, value_epistemic, value_uncertainty = self.uncertainty_estimator(value)
-        
-        edge_uncertainty = self.uncertainty_propagation(query_uncertainty, value_uncertainty)
+        object_uncertainty_src = self.obj_uncertainty_estimator(query)
+        object_uncertainty_tgt = self.obj_uncertainty_estimator(value)
         
         edge_feature = torch.cat([query, edge, value],dim=1)
         edge_feature = self.nn_edge(edge_feature)
         
-        object_uncertainty = {
-            'src_aleatoric': query_aleatoric,
-            'src_epistemic': query_epistemic,
-            'tgt_aleatoric': value_aleatoric,
-            'tgt_epistemic': value_epistemic,
-            'edge': edge_uncertainty
-        }
+        edge_uncertainty = self.edge_uncertainty_estimator(edge_feature)
 
         if self.attention == 'fat':
             value = self.proj_value(value)
             query = self.proj_query(query).view(batch_dim, self.d_n, self.num_heads)
             edge = self.proj_edge(edge).view(batch_dim, self.d_e, self.num_heads)
-            
             if self.use_edge:
-                attn_logits = self.nn(torch.cat([query,edge],dim=1))  # b, dim, head
+                prob = self.nn(torch.cat([query,edge],dim=1)) # b, dim, head    
             else:
-                attn_logits = self.nn(query)  # b, dim, head
-            
-            combined_uncertainty = torch.cat([query_uncertainty, value_uncertainty], dim=1)
-            scaled_logits = self.adaptive_temperature(combined_uncertainty, attn_logits)
-            
-            prob = scaled_logits.softmax(1)
-            
-            confidence_weight = self.uncertainty_gate(query_uncertainty)
-            confidence_weight = confidence_weight.unsqueeze(1).expand_as(prob)
-            
-            adjusted_prob = prob * confidence_weight
-            
-            x = torch.einsum('bm,bm->bm', adjusted_prob.reshape_as(value), value)
+                prob = self.nn(query) # b, dim, head 
+            prob = prob.softmax(1)
+            x = torch.einsum('bm,bm->bm', prob.reshape_as(value), value)
         
         elif self.attention == 'distance':
             raise NotImplementedError()
@@ -196,12 +179,19 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         else:
             raise NotImplementedError('')
         
-        return x, edge_feature, prob, object_uncertainty
+        uncertainty = {
+            'object_uncertainty_src': object_uncertainty_src,
+            'object_uncertainty_tgt': object_uncertainty_tgt,
+            'edge_uncertainty': edge_uncertainty,
+            'object_uncertainty': torch.cat([object_uncertainty_src, object_uncertainty_tgt], dim=0)
+        }
+        
+        return x, edge_feature, prob, uncertainty
 
 
 class MMG_single(torch.nn.Module):
     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr= 'max', 
-                 use_bn=False,flow='target_to_source', attention = 'fat', 
+                 use_bn=False, flow='target_to_source', attention = 'fat', 
                  hidden_size=512, depth=1, use_edge:bool=True, **kwargs):
         
         super().__init__()
@@ -226,24 +216,31 @@ class MMG_single(torch.nn.Module):
         
         self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
         
-        self.uncertainty_aggregation = nn.Sequential(
-            nn.Linear(4 * depth, 128),
+        self.uncertainty_estimator_obj = nn.Sequential(
+            nn.Linear(dim_node, 128),
             nn.ReLU(),
-            nn.Linear(128, 2),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+        )
+        
+        self.uncertainty_estimator_edge = nn.Sequential(
+            nn.Linear(dim_edge, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
             nn.Sigmoid()
         )
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
-        layer_uncertainties = []
+        layer_obj_uncertainties = []
+        layer_edge_uncertainties = []
         
         for i in range(self.depth):
             obj_feature_3d, edge_feature_3d, uncertainty = self.gcn_3ds[i](
                 obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
             
-            layer_uncertainties.append(torch.cat([
-                uncertainty['src_aleatoric'], 
-                uncertainty['src_epistemic']
-            ], dim=1))
+            if 'object_uncertainty' in uncertainty and 'edge_uncertainty' in uncertainty:
+                layer_obj_uncertainties.append(uncertainty['object_uncertainty'])
+                layer_edge_uncertainties.append(uncertainty['edge_uncertainty'])
             
             if i < (self.depth-1) or self.depth==1:
                 obj_feature_3d = F.relu(obj_feature_3d)
@@ -252,7 +249,14 @@ class MMG_single(torch.nn.Module):
                 edge_feature_3d = F.relu(edge_feature_3d)
                 edge_feature_3d = self.drop_out(edge_feature_3d)
         
-        all_uncertainties = torch.cat(layer_uncertainties, dim=1)
-        final_uncertainty = self.uncertainty_aggregation(all_uncertainties)
+        object_uncertainty = self.uncertainty_estimator_obj(obj_feature_3d)
+        edge_uncertainty = self.uncertainty_estimator_edge(edge_feature_3d)
         
-        return obj_feature_3d, edge_feature_3d, final_uncertainty
+        uncertainty_info = {
+            'object_uncertainty': object_uncertainty,
+            'edge_uncertainty': edge_uncertainty,
+            'layer_obj_uncertainties': layer_obj_uncertainties,
+            'layer_edge_uncertainties': layer_edge_uncertainties
+        }
+        
+        return obj_feature_3d, edge_feature_3d, uncertainty_info
