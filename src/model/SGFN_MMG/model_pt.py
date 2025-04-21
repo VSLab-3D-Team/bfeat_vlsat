@@ -10,12 +10,36 @@ from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_
 from src.utils.eval_utils_recall import *
 # from src.model.model_utils.network_MMGpt import MMG_single
 # from src.model.model_utils.network_MMG import MMG_single
-from src.model.model_utils.network_MMGdual import MMG_dual
+from src.model.model_utils.network_MMG_uncer import MMG_single
 from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
 from clip_adapter.model import AdapterModel
+
+class UncertaintyCalibrationLoss(nn.Module):
+    def __init__(self, lambda_cal=0.1):
+        super().__init__()
+        self.lambda_cal = lambda_cal
+        
+    def forward(self, predicted_uncertainty, pred_logits, true_labels):
+        if len(pred_logits.shape) > 1 and pred_logits.shape[1] > 1:
+            pred_labels = torch.argmax(pred_logits, dim=1)
+            error_indicator = (pred_labels != true_labels).float()
+        elif len(true_labels.shape) > 1 and true_labels.shape[1] > 1:
+            pred_labels = (pred_logits > 0.5).float()
+            error_indicator = (torch.sum(pred_labels != true_labels, dim=1) > 0).float()
+        else:
+            pred_labels = torch.argmax(pred_logits, dim=1)
+            error_indicator = (pred_labels != true_labels).float()
+            
+        if len(predicted_uncertainty.shape) == 2 and predicted_uncertainty.shape[1] == 2:
+            combined_uncertainty = torch.mean(predicted_uncertainty, dim=1)
+            calibration_loss = F.mse_loss(combined_uncertainty, error_indicator)
+        else:
+            calibration_loss = F.mse_loss(predicted_uncertainty.squeeze(), error_indicator)
+        
+        return self.lambda_cal * calibration_loss
 
 class Mmgnet(BaseModel):
     def __init__(self, config, num_obj_class, num_rel_class, dim_descriptor=11):
@@ -47,6 +71,8 @@ class Mmgnet(BaseModel):
         dim_edge_feature = 512
         self.momentum = 0.1
         self.model_pre = None
+
+        self.uncertainty_calibration = UncertaintyCalibrationLoss(lambda_cal=0.1)
         
         # Object Encoder
         self.obj_encoder = PointNetEncoder("cuda", channel=self.dim_point)   
@@ -62,7 +88,7 @@ class Mmgnet(BaseModel):
         
         self.index_get = Gen_Index(flow=self.flow)
         
-        self.mmg = MMG_dual(
+        self.mmg = MMG_single(
             dim_node=dim_point_feature,
             dim_edge=dim_edge_feature,
             dim_atten=self.mconfig.DIM_ATTEN,
@@ -70,6 +96,7 @@ class Mmgnet(BaseModel):
             num_heads=self.mconfig.NUM_HEADS,
             aggr=self.mconfig.GCN_AGGR,
             flow=self.flow,
+            attention=self.mconfig.ATTENTION,
             use_edge=self.mconfig.USE_GCN_EDGE,
             DROP_OUT_ATTEN=self.mconfig.DROP_OUT_ATTEN,
         )
@@ -250,14 +277,9 @@ class Mmgnet(BaseModel):
         
         obj_center = descriptor[:, :3].clone()
 
-        edge_geo_features = edge_feature.squeeze(-1)
-        
-        ''' Apply dual attention GAT '''
-        gcn_obj_feature_3d, gcn_edge_feature_3d, balance_values = self.mmg(
+        gcn_obj_feature_3d, gcn_edge_feature_3d, uncertainty_info = self.mmg(
             obj_feature, rel_feature_3d, edge_indices, batch_ids, 
-            obj_center=obj_center,
-            geo_features=edge_geo_features,
-            istrain=istrain
+            obj_center=obj_center, istrain=istrain
         )
 
         gcn_edge_feature_3d_dis = self.generate_object_pair_features(gcn_obj_feature_3d, gcn_edge_feature_3d, edge_indices)
@@ -271,13 +293,13 @@ class Mmgnet(BaseModel):
         rel_diff = F.l1_loss(rel_pred_desc, edge_feature.squeeze(-1))
         
         if istrain:
-            return obj_logits_3d, rel_cls_3d, gcn_edge_feature_3d_dis, logit_scale, rel_diff, balance_values
+            return obj_logits_3d, rel_cls_3d, gcn_edge_feature_3d_dis, logit_scale, rel_diff, uncertainty_info
         else:
             return obj_logits_3d, rel_cls_3d
 
     def process_train(self, obj_points, obj_2d_feats, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
         self.iteration +=1    
-        obj_logits_3d, rel_cls_3d, edge_feature_3d, obj_logit_scale, rel_diff, balance_values = \
+        obj_logits_3d, rel_cls_3d, edge_feature_3d, obj_logit_scale, rel_diff, uncertainty_info = \
             self(obj_points, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=True)
         
         # compute loss for obj
@@ -347,10 +369,25 @@ class Mmgnet(BaseModel):
 
         edge_feature_3d = edge_feature_3d / edge_feature_3d.norm(dim=-1, keepdim=True)
         rel_mimic_3d = F.l1_loss(edge_feature_3d, rel_text_feat)
+
+        obj_uncertainty_loss = self.uncertainty_calibration(
+            uncertainty_info['object_uncertainty'], 
+            obj_logits_3d, 
+            gt_cls
+        )
         
-        avg_balance = torch.cat([b.view(-1) for b in balance_values]).mean()
+        rel_uncertainty_loss = self.uncertainty_calibration(
+            uncertainty_info['edge_uncertainty'], 
+            rel_cls_3d, 
+            gt_rel_cls
+        )
+        
+        uncertainty_loss = (obj_uncertainty_loss + rel_uncertainty_loss) / 2.0
+        
+        avg_obj_uncertainty = uncertainty_info['object_uncertainty'].mean().detach()
+        avg_edge_uncertainty = uncertainty_info['edge_uncertainty'].mean().detach()
                
-        loss = lambda_o * loss_obj_3d + 3 * lambda_r * loss_rel_3d + 0.1 * rel_mimic_3d + rel_diff
+        loss = lambda_o * loss_obj_3d + 3 * lambda_r * loss_rel_3d + 0.1 * rel_mimic_3d + rel_diff + 0.05 * uncertainty_loss
         self.backward(loss)
         
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach(), gt_cls, topk=11)
@@ -364,7 +401,10 @@ class Mmgnet(BaseModel):
                 ("train/logit_scale", obj_logit_scale.detach().item()),
                 ("train/rel_mimic_loss_3d", rel_mimic_3d.detach().item()),
                 ("train/loss", loss.detach().item()),
-                ("train/avg_balance", avg_balance.detach().item()),
+                ("train/obj_uncertainty_loss", obj_uncertainty_loss.detach().item()),
+                ("train/rel_uncertainty_loss", rel_uncertainty_loss.detach().item()),
+                ("train/avg_obj_uncertainty", avg_obj_uncertainty.item()),
+                ("train/avg_edge_uncertainty", avg_edge_uncertainty.item()),
                 ("train/Obj_R1", obj_topk_list[0]),
                 ("train/Obj_R5", obj_topk_list[1]),
                 ("train/Obj_R10", obj_topk_list[2]),
