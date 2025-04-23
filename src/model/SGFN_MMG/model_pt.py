@@ -403,7 +403,7 @@ class Mmgnet(BaseModel):
         avg_obj_uncertainty = uncertainty_info['object_uncertainty'].mean().detach()
         avg_edge_uncertainty = uncertainty_info['edge_uncertainty'].mean().detach()
                
-        loss = lambda_o * loss_obj_3d + 3 * lambda_r * loss_rel_3d + rel_diff # + 0.05 * uncertainty_loss # + 0.1 * rel_mimic_3d
+        loss = lambda_o * loss_obj_3d + 1.0 * lambda_r * loss_rel_3d + rel_diff + 0.1 * uncertainty_loss # + 0.1 * rel_mimic_3d
         self.backward(loss)
         
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach(), gt_cls, topk=11)
