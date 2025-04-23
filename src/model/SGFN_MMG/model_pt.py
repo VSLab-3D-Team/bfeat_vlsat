@@ -9,8 +9,8 @@ from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
 from src.utils.eval_utils_recall import *
 # from src.model.model_utils.network_MMGpt import MMG_single
-# from src.model.model_utils.network_MMG import MMG_single
-from src.model.model_utils.network_MMG_uncer import MMG_single
+from src.model.model_utils.network_MMG import MMG_single
+# from src.model.model_utils.network_MMG_uncer import MMG_single
 from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
@@ -403,7 +403,7 @@ class Mmgnet(BaseModel):
         avg_obj_uncertainty = uncertainty_info['object_uncertainty'].mean().detach()
         avg_edge_uncertainty = uncertainty_info['edge_uncertainty'].mean().detach()
                
-        loss = lambda_o * loss_obj_3d + 1.0 * lambda_r * loss_rel_3d + rel_diff + 0.1 * uncertainty_loss # + 0.1 * rel_mimic_3d
+        loss = lambda_o * loss_obj_3d + 1.0 * lambda_r * loss_rel_3d + rel_diff # + 0.1 * uncertainty_loss # + 0.1 * rel_mimic_3d
         self.backward(loss)
         
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach(), gt_cls, topk=11)
