@@ -470,7 +470,10 @@ class Mmgnet(BaseModel):
         
         sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='triplet')
         predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='rels')
-        
+        sgcls_recall_wo = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='triplet')
+        predcls_recall_wo = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='rels')
+        sgcls_mean_recall_w = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='triplet')
+        predcls_mean_recall_w = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='rels')
         
         if use_triplet:
             top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
@@ -482,7 +485,7 @@ class Mmgnet(BaseModel):
             obj_scores = None
             rel_scores = None
 
-        return top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, top_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w
+        return top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, top_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, sgcls_mean_recall_w, predcls_mean_recall_w
  
     
     def backward(self, loss):
