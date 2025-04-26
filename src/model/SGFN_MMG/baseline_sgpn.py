@@ -46,7 +46,6 @@ class SGPN(BaseModel):
         
         # Object Encoder
         self.obj_encoder = PointNetfeat(
-            device = config.DEVICE,
             global_feat=True, 
             batch_norm=with_bn,
             point_size=dim_point, 
@@ -56,7 +55,6 @@ class SGPN(BaseModel):
         
         # Relationship Encoder
         self.rel_encoder = PointNetfeat(
-            device = config.DEVICE,
             global_feat=True,
             batch_norm=with_bn,
             point_size=dim_point_rel,
