@@ -68,7 +68,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         
         xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
         
-        twinning_edge_attention = torch.zeros_like(x)
+        twinning_edge_attention = torch.zeros_like(xx)
         for node_idx in range(x.shape[0]):
             subj_features = []
             if node_idx in subject_edges:
@@ -92,7 +92,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             
             edge_agg = torch.cat([subj_agg, obj_agg])
             
-            twinning_edge_attention[node_idx] = nn.Linear(edge_agg.shape[0], self.dim_node, device=x.device)(edge_agg)
+            twinning_edge_attention[node_idx] = nn.Linear(edge_agg.shape[0], xx.shape[1], device=x.device)(edge_agg)
         
         xx = F.relu(xx) * self.sigmoid(twinning_edge_attention)
         
