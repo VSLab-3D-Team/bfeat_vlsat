@@ -30,6 +30,8 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             num_heads=num_heads, use_bn=use_bn, attention=attention, use_edge=use_edge, **kwargs)
         self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
                             do_bn=use_bn, on_last=False)
+        
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, edge_feature, edge_index, weight=None, istrain=False):
         assert x.ndim == 2
@@ -49,10 +51,55 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
         
         xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
+        
+        subject_edges = {}
+        object_edges = {}
+        
+        for i in range(edge_index.shape[1]):
+            src, dst = edge_index[0, i].item(), edge_index[1, i].item()
+            
+            if src not in subject_edges:
+                subject_edges[src] = []
+            subject_edges[src].append(i)
+            
+            if dst not in object_edges:
+                object_edges[dst] = []
+            object_edges[dst].append(i)
+        
         xx = self.index_aggr(xx, edge_index, dim_size=x.shape[0])
+        
+        twinning_edge_attention = torch.zeros_like(x)
+        for node_idx in range(x.shape[0]):
+            subj_features = []
+            if node_idx in subject_edges:
+                for edge_idx in subject_edges[node_idx]:
+                    subj_features.append(gcn_edge_feature[edge_idx])
+            
+            obj_features = []
+            if node_idx in object_edges:
+                for edge_idx in object_edges[node_idx]:
+                    obj_features.append(gcn_edge_feature[edge_idx])
+            
+            if subj_features:
+                subj_agg = torch.stack(subj_features).mean(dim=0)
+            else:
+                subj_agg = torch.zeros(self.dim_edge, device=x.device)
+                
+            if obj_features:
+                obj_agg = torch.stack(obj_features).mean(dim=0)
+            else:
+                obj_agg = torch.zeros(self.dim_edge, device=x.device)
+            
+            edge_agg = torch.cat([subj_agg, obj_agg])
+            
+            twinning_edge_attention[node_idx] = nn.Linear(edge_agg.shape[0], self.dim_node, device=x.device)(edge_agg)
+        
+        xx = F.relu(xx) * self.sigmoid(twinning_edge_attention)
+        
         xx = self.prop(torch.cat([x, xx], dim=1))
+        
         return xx, gcn_edge_feature
-  
+
 
 class MultiHeadedEdgeAttention(torch.nn.Module):
     def __init__(self, num_heads: int, dim_node: int, dim_edge: int, dim_atten: int, use_bn=False,
@@ -77,7 +124,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         DROP_OUT_ATTEN = None
         if 'DROP_OUT_ATTEN' in kwargs:
             DROP_OUT_ATTEN = kwargs['DROP_OUT_ATTEN']
-            # print('drop out in',self.name,'with value',DROP_OUT_ATTEN)
         
         self.attention = attention
         assert self.attention in ['fat']
@@ -99,13 +145,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         batch_dim = query.size(0)
         
         edge_feature = torch.cat([query, edge, reverse_edge, value], dim=1)
-        
-        # avoid overfitting by mask relation input object feature
-        # if random.random() < self.mask_obj and istrain: 
-        #     feat_mask = torch.cat([torch.ones_like(query), torch.zeros_like(edge), 
-        #                            torch.zeros_like(reverse_edge), torch.ones_like(value)], dim=1)
-        #     edge_feature = torch.where(feat_mask == 1, edge_feature, torch.zeros_like(edge_feature))
-        
         edge_feature = self.nn_edge(edge_feature)
 
         if self.attention == 'fat':
@@ -173,9 +212,7 @@ class MMG_pt_single(torch.nn.Module):
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
-        # compute weight for obj
         if obj_center is not None:
-            # get attention weight for object
             batch_size = batch_ids.max().item() + 1
             N_K = obj_feature_3d.shape[0]
             obj_mask = torch.zeros(1, 1, N_K, N_K).cuda()
@@ -215,7 +252,6 @@ class MMG_pt_single(torch.nn.Module):
             
             obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
             if i < (self.depth-1) or self.depth==1:
-                
                 obj_feature_3d = F.relu(obj_feature_3d)
                 obj_feature_3d = self.drop_out(obj_feature_3d)
                 
