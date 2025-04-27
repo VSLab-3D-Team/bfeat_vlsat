@@ -12,8 +12,8 @@ from src.model.transformer.attention import MultiHeadAttention
 class DistanceAwareMasking(nn.Module):
     def __init__(self, dim_coord, dim_out):
         super().__init__()
-        input_dim = dim_coord + 1
-        self.gd = build_mlp([input_dim, dim_coord, dim_out], do_bn=False, on_last=False)
+        self.input_dim = dim_coord + 1  # 3 + 1 = 4
+        self.gd = build_mlp([self.input_dim, dim_coord, dim_out], do_bn=False, on_last=False)
     
     def forward(self, node_coords):
         num_nodes = node_coords.size(0)
@@ -26,7 +26,7 @@ class DistanceAwareMasking(nn.Module):
         
         features = torch.cat([diff, dist], dim=2)  # [num_nodes, num_nodes, 4]
         
-        mask = self.gd(features.view(-1, 4)).view(num_nodes, num_nodes, -1)
+        mask = self.gd(features.view(-1, self.input_dim)).view(num_nodes, num_nodes, -1)
         
         return mask
 
