@@ -47,20 +47,26 @@ class DistanceAwareMultiHeadAttention(nn.Module):
     
     def forward(self, x, node_coords):
         batch_size = x.size(0)
+        num_nodes = x.size(1)
         
-        q = self.q_proj(x).view(batch_size, -1, self.num_heads, self.dim_head).transpose(1, 2)
-        k = self.k_proj(x).view(batch_size, -1, self.num_heads, self.dim_head).transpose(1, 2)
-        v = self.v_proj(x).view(batch_size, -1, self.num_heads, self.dim_head).transpose(1, 2)
+        q = self.q_proj(x).view(batch_size, num_nodes, self.num_heads, self.dim_head).transpose(1, 2)
+        k = self.k_proj(x).view(batch_size, num_nodes, self.num_heads, self.dim_head).transpose(1, 2)
+        v = self.v_proj(x).view(batch_size, num_nodes, self.num_heads, self.dim_head).transpose(1, 2)
         
-        distance_mask = self.distance_masking(node_coords)
+        distance_mask = self.distance_masking(node_coords)  # [num_nodes, num_nodes, num_heads]
         
-        scores = torch.matmul(q, k.transpose(-2, -1)) / (self.dim_head ** 0.5)
-        scores = scores + distance_mask.unsqueeze(0)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / (self.dim_head ** 0.5)  # [batch_size, num_heads, num_nodes, num_nodes]
+        
+        distance_mask = distance_mask.permute(2, 0, 1).unsqueeze(0)
+        
+        distance_mask = distance_mask.expand(batch_size, -1, -1, -1)
+        
+        scores = scores + distance_mask
         
         attention = F.softmax(scores, dim=-1)
         out = torch.matmul(attention, v)
         
-        out = out.transpose(1, 2).contiguous().view(batch_size, -1, self.num_heads * self.dim_head)
+        out = out.transpose(1, 2).contiguous().view(batch_size, num_nodes, self.num_heads * self.dim_head)
         out = self.out_proj(out)
         
         return out
