@@ -14,6 +14,7 @@ from src.dataset.dataset_builder import build_dataset
 from src.model.SGFN_MMG.model_pt import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
+from src.utils.eval_utils_recall import *
 
 import wandb
 
@@ -218,7 +219,7 @@ class MMGNet():
         print('===   start evaluation   ===')
         self.model.eval()
         topk_obj_list, topk_rel_list, topk_triplet_list, gt_obj_list, cls_matrix_list, edge_feature_list = np.array([]), np.array([]), np.array([]), np.array([]), [], []
-        sgcls_recall_w_list, predcls_recall_w_list = [], []
+        sgcls_recall_w_list, predcls_recall_w_list, sgcls_mean_recall_w_list, predcls_mean_recall_w_list, sgcls_recall_wo_list, predcls_recall_wo_list, sgcls_mean_recall_wo_list, predcls_mean_recall_wo_list = [], [], [], [], [], [], [], []
         sub_scores_list, obj_scores_list, rel_scores_list = [], [], []
         topk_obj_2d_list, topk_rel_2d_list, topk_triplet_2d_list = np.array([]), np.array([]), np.array([])
 
@@ -227,7 +228,7 @@ class MMGNet():
             obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_val(items)            
             
             with torch.no_grad():
-                top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w \
+                top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo \
                     = self.model.process_val(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, use_triplet=True)
                         
             ''' calculate metrics '''
@@ -240,6 +241,12 @@ class MMGNet():
             gt_obj_list = np.concatenate((gt_obj_list, gt_class.cpu().numpy()))
             sgcls_recall_w_list.append(sgcls_recall_w)
             predcls_recall_w_list.append(predcls_recall_w)
+            sgcls_mean_recall_w_list.append(sgcls_mean_recall_w)
+            predcls_mean_recall_w_list.append(predcls_mean_recall_w)
+            sgcls_recall_wo_list.append(sgcls_recall_wo)
+            predcls_recall_wo_list.append(predcls_recall_wo)
+            sgcls_mean_recall_wo_list.append(sgcls_mean_recall_wo)
+            predcls_mean_recall_wo_list.append(predcls_mean_recall_wo)
 
             if cls_matrix is not None:
                 cls_matrix_list.extend(cls_matrix)
@@ -310,10 +317,21 @@ class MMGNet():
         rel_acc_2d_mean_1, rel_acc_2d_mean_3, rel_acc_2d_mean_5 = self.compute_mean_predicate(cls_matrix_list, topk_rel_2d_list)
         obj_acc_mean_1, obj_acc_mean_5, obj_acc_mean_10 = self.compute_mean_object(gt_obj_list, topk_obj_list)
         
+        sgcls_mean_recall_w_list = handle_mean_recall(sgcls_mean_recall_w_list)
+        predcls_mean_recall_w_list = handle_mean_recall(predcls_mean_recall_w_list)
+        sgcls_mean_recall_wo_list = handle_mean_recall(sgcls_mean_recall_wo_list)
+        predcls_mean_recall_wo_list = handle_mean_recall(predcls_mean_recall_wo_list)
+        
         L = len(sgcls_recall_w_list)
         
         sgcls_recall_w = np.array(sgcls_recall_w_list).sum(0) / L * 100
         predcls_recall_w = np.array(predcls_recall_w_list).sum(0) / L * 100
+        sgcls_recall_wo = np.array(sgcls_recall_wo_list).sum(0) / L * 100
+        predcls_recall_wo = np.array(predcls_recall_wo_list).sum(0) / L * 100
+        sgcls_mean_recall_w = sgcls_mean_recall_w_list * 100
+        predcls_mean_recall_w = predcls_mean_recall_w_list * 100
+        sgcls_mean_recall_wo = sgcls_mean_recall_wo_list * 100
+        predcls_mean_recall_wo = predcls_mean_recall_wo_list * 100
 
         print()
         print(f"Eval: Recall@1_obj : {obj_acc_1}", file=f_in)   
@@ -340,6 +358,25 @@ class MMGNet():
         print(f"Eval: Predcls_w@20 : {predcls_recall_w[0]}", file=f_in)
         print(f"Eval: Predcls_w@50 : {predcls_recall_w[1]}", file=f_in)
         print(f"Eval: Predcls_w@100: {predcls_recall_w[2]}", file=f_in)
+        print(f"Eval: SGcls_wo@20   : {sgcls_recall_wo[0]}", file=f_in)
+        print(f"Eval: SGcls_wo@50   : {sgcls_recall_wo[1]}", file=f_in)
+        print(f"Eval: SGcls_wo@100  : {sgcls_recall_wo[2]}", file=f_in)
+        print(f"Eval: Predcls_wo@20 : {predcls_recall_wo[0]}", file=f_in)
+        print(f"Eval: Predcls_wo@50 : {predcls_recall_wo[1]}", file=f_in)
+        print(f"Eval: Predcls_wo@100: {predcls_recall_wo[2]}", file=f_in)
+        print(f"Eval: SGcls_w_mean@20   : {sgcls_mean_recall_w[0]}", file=f_in)
+        print(f"Eval: SGcls_w_mean@50   : {sgcls_mean_recall_w[1]}", file=f_in)
+        print(f"Eval: SGcls_w_mean@100  : {sgcls_mean_recall_w[2]}", file=f_in)
+        print(f"Eval: Predcls_w_mean@20 : {predcls_mean_recall_w[0]}", file=f_in)
+        print(f"Eval: Predcls_w_mean@50 : {predcls_mean_recall_w[1]}", file=f_in)
+        print(f"Eval: Predcls_w_mean@100: {predcls_mean_recall_w[2]}", file=f_in)
+        print(f"Eval: SGcls_wo_mean@20   : {sgcls_mean_recall_wo[0]}", file=f_in)
+        print(f"Eval: SGcls_wo_mean@50   : {sgcls_mean_recall_wo[1]}", file=f_in)
+        print(f"Eval: SGcls_wo_mean@100  : {sgcls_mean_recall_wo[2]}", file=f_in)
+        print(f"Eval: Predcls_wo_mean@20 : {predcls_mean_recall_wo[0]}", file=f_in)
+        print(f"Eval: Predcls_wo_mean@50 : {predcls_mean_recall_wo[1]}", file=f_in)
+        print(f"Eval: Predcls_wo_mean@100: {predcls_mean_recall_wo[2]}", file=f_in)
+        print("--------------------------------------------------", file=f_in)
         print(f"Eval: zero-shot recall@50 : {zero_shot_recall[0]}", file=f_in)
         print(f"Eval: zero-shot recall@100: {zero_shot_recall[1]}", file=f_in)
         print(f"Eval: non-zero-shot recall@50 : {non_zero_shot_recall[0]}", file=f_in)
@@ -373,6 +410,24 @@ class MMGNet():
                 ("Predcls_w@20", predcls_recall_w[0]),
                 ("Predcls_w@50", predcls_recall_w[1]),
                 ("Predcls_w@100", predcls_recall_w[2]),
+                ("SGcls_wo@20", sgcls_recall_wo[0]),
+                ("SGcls_wo@50", sgcls_recall_wo[1]),
+                ("SGcls_wo@100", sgcls_recall_wo[2]),
+                ("Predcls_wo@20", predcls_recall_wo[0]),
+                ("Predcls_wo@50", predcls_recall_wo[1]),
+                ("Predcls_wo@100", predcls_recall_wo[2]),
+                ("SGcls_w_mean@20", sgcls_mean_recall_w[0]),
+                ("SGcls_w_mean@50", sgcls_mean_recall_w[1]),
+                ("SGcls_w_mean@100", sgcls_mean_recall_w[2]),
+                ("Predcls_w_mean@20", predcls_mean_recall_w[0]),
+                ("Predcls_w_mean@50", predcls_mean_recall_w[1]),
+                ("Predcls_w_mean@100", predcls_mean_recall_w[2]),
+                ("SGcls_wo_mean@20", sgcls_mean_recall_wo[0]),
+                ("SGcls_wo_mean@50", sgcls_mean_recall_wo[1]),
+                ("SGcls_wo_mean@100", sgcls_mean_recall_wo[2]),
+                ("Predcls_wo_mean@20", predcls_mean_recall_wo[0]),
+                ("Predcls_wo_mean@50", predcls_mean_recall_wo[1]),
+                ("Predcls_wo_mean@100", predcls_mean_recall_wo[2]),
                 ("zero_shot_recall@50", zero_shot_recall[0]),
                 ("zero_shot_recall@100", zero_shot_recall[1]),
                 ("non_zero_shot_recall@50", non_zero_shot_recall[0]),
@@ -409,6 +464,18 @@ class MMGNet():
                     "val/Predcls_w@20": predcls_recall_w[0],
                     "val/Predcls_w@50": predcls_recall_w[1],
                     "val/Predcls_w@100": predcls_recall_w[2],
+                    "val/SGcls_w_mean@20": sgcls_mean_recall_w[0],
+                    "val/SGcls_w_mean@50": sgcls_mean_recall_w[1],
+                    "val/SGcls_w_mean@100": sgcls_mean_recall_w[2],
+                    "val/Predcls_w_mean@20": predcls_mean_recall_w[0],
+                    "val/Predcls_w_mean@50": predcls_mean_recall_w[1],
+                    "val/Predcls_w_mean@100": predcls_mean_recall_w[2],
+                    "val/SGcls_wo_mean@20": sgcls_mean_recall_wo[0],
+                    "val/SGcls_wo_mean@50": sgcls_mean_recall_wo[1],
+                    "val/SGcls_wo_mean@100": sgcls_mean_recall_wo[2],
+                    "val/Predcls_wo_mean@20": predcls_mean_recall_wo[0],
+                    "val/Predcls_wo_mean@50": predcls_mean_recall_wo[1],
+                    "val/Predcls_wo_mean@100": predcls_mean_recall_wo[2],
                     "val/zero_shot_recall@50": zero_shot_recall[0],
                     "val/zero_shot_recall@100": zero_shot_recall[1],
                     "val/non_zero_shot_recall@50": non_zero_shot_recall[0],
