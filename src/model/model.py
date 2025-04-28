@@ -10,7 +10,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
-from src.model.SGFN_MMG.model import Mmgnet
+# from src.model.SGFN_MMG.model import Mmgnet
+from src.model.SGFN_MMG.baseline_sgfn import SGFN
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 from src.utils.eval_utils_recall import *
@@ -75,7 +76,7 @@ class MMGNet():
         self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
         
         ''' Build Model '''
-        self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        self.model = SGFN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
         self.samples_path = os.path.join(config.PATH, self.model_name, self.exp,  'samples')
         self.results_path = os.path.join(config.PATH, self.model_name, self.exp, 'results')
         self.trace_path = os.path.join(config.PATH, self.model_name, self.exp, 'traced')
@@ -463,18 +464,24 @@ class MMGNet():
                     "val/Predcls_w@20": predcls_recall_w[0],
                     "val/Predcls_w@50": predcls_recall_w[1],
                     "val/Predcls_w@100": predcls_recall_w[2],
-                    "SGcls_w_mean@20": sgcls_mean_recall_w[0],
-                    "SGcls_w_mean@50": sgcls_mean_recall_w[1],
-                    "SGcls_w_mean@100": sgcls_mean_recall_w[2],
-                    "Predcls_w_mean@20": predcls_mean_recall_w[0],
-                    "Predcls_w_mean@50": predcls_mean_recall_w[1],
-                    "Predcls_w_mean@100": predcls_mean_recall_w[2],
-                    "SGcls_wo_mean@20": sgcls_mean_recall_wo[0],
-                    "SGcls_wo_mean@50": sgcls_mean_recall_wo[1],
-                    "SGcls_wo_mean@100": sgcls_mean_recall_wo[2],
-                    "Predcls_wo_mean@20": predcls_mean_recall_wo[0],
-                    "Predcls_wo_mean@50": predcls_mean_recall_wo[1],
-                    "Predcls_wo_mean@100": predcls_mean_recall_wo[2],
+                    "val/SGcls_wo@20": sgcls_recall_wo[0],
+                    "val/SGcls_wo@50": sgcls_recall_wo[1],
+                    "val/SGcls_wo@100": sgcls_recall_wo[2],
+                    "val/Predcls_wo@20": predcls_recall_wo[0],
+                    "val/Predcls_wo@50": predcls_recall_wo[1],
+                    "val/Predcls_wo@100": predcls_recall_wo[2],
+                    "val/SGcls_w_mean@20": sgcls_mean_recall_w[0],
+                    "val/SGcls_w_mean@50": sgcls_mean_recall_w[1],
+                    "val/SGcls_w_mean@100": sgcls_mean_recall_w[2],
+                    "val/Predcls_w_mean@20": predcls_mean_recall_w[0],
+                    "val/Predcls_w_mean@50": predcls_mean_recall_w[1],
+                    "val/Predcls_w_mean@100": predcls_mean_recall_w[2],
+                    "val/SGcls_wo_mean@20": sgcls_mean_recall_wo[0],
+                    "val/SGcls_wo_mean@50": sgcls_mean_recall_wo[1],
+                    "val/SGcls_wo_mean@100": sgcls_mean_recall_wo[2],
+                    "val/Predcls_wo_mean@20": predcls_mean_recall_wo[0],
+                    "val/Predcls_wo_mean@50": predcls_mean_recall_wo[1],
+                    "val/Predcls_wo_mean@100": predcls_mean_recall_wo[2],
                     "val/zero_shot_recall@50": zero_shot_recall[0],
                     "val/zero_shot_recall@100": zero_shot_recall[1],
                     "val/non_zero_shot_recall@50": non_zero_shot_recall[0],
