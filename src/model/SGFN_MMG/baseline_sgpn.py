@@ -42,7 +42,7 @@ class SGPN(BaseModel):
             dim_point_rel += 1
 
         dim_point_feature = 512
-        self.dim_point=9
+        self.dim_point=dim_point
         
         # Object Encoder
         self.obj_encoder = PointNetEncoder("cuda", channel=self.dim_point)   
