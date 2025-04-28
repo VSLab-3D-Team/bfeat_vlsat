@@ -294,7 +294,7 @@ class SSGDatasetGraph(data.Dataset):
             obj_points[i] = obj_pointset
 
             if multi_view_root is not None:
-                obj_2d_feats[i] = np.load(os.path.join(multi_view_root, f'data/3RScan/{scene_id}/multi_view/instance_{instance_id}_class_{instance_name}_origin_view_mean.npy'))
+                obj_2d_feats[i] = np.load(os.path.join(multi_view_root, f'{scene_id}/multi_view/instance_{instance_id}_class_{instance_name}_origin_view_mean.npy'))
         
         # set gt label for relation
         len_object = len(nodes)
