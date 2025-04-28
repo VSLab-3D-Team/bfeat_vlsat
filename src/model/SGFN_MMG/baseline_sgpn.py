@@ -55,7 +55,7 @@ class SGPN(BaseModel):
         self.rel_encoder = PointNetfeat(
             global_feat=True,
             batch_norm=with_bn,
-            point_size=dim_point_rel,
+            point_size=256,
             input_transform=False,
             feature_transform=mconfig.feature_transform,
             out_size=mconfig.edge_feature_size)
