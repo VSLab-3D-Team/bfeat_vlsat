@@ -105,7 +105,7 @@ class SGPN(BaseModel):
     def process_train(self, obj_points, obj_2d_feats, gt_cls, rel_points, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
         self.iteration +=1    
         
-        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices)
+        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices.t().contiguous())
         
         # compute loss for obj
         loss_obj = F.nll_loss(obj_pred, gt_cls)
