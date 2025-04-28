@@ -20,3 +20,4 @@ config: {'model_name': 'Mmgnet', 'batch_size': 8, 'learning_rate': 0.0001, 'max_
 2025-04-14 13:12:31,635 INFO    MainThread:1903915 [wandb_run.py:_redirect():2324] Wrapping output streams.
 2025-04-14 13:12:31,635 INFO    MainThread:1903915 [wandb_run.py:_redirect():2349] Redirects installed.
 2025-04-14 13:12:31,637 INFO    MainThread:1903915 [wandb_init.py:init():1009] run started, returning control to user process
+2025-04-15 17:46:39,649 WARNING MsgRouterThr:1903915 [router.py:message_loop():75] message_loop has been closed
