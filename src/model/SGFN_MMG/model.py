@@ -15,6 +15,7 @@ from src.utils.eva_utils_acc import (evaluate_topk_object,
                                  evaluate_topk_predicate,
                                  evaluate_triplet_topk, get_gt)
 from src.utils.eval_utils_recall import *
+from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from utils import op_utils
 
 
@@ -49,13 +50,16 @@ class Mmgnet(BaseModel):
         self.model_pre = None
         
         # Object Encoder
-        self.obj_encoder = PointNetfeat(
-            global_feat=True, 
-            batch_norm=with_bn,
-            point_size=dim_point, 
-            input_transform=False,
-            feature_transform=mconfig.feature_transform,
-            out_size=dim_point_feature)      
+        self.obj_encoder = PointNetEncoder("cuda", channel=self.dim_point)   
+        self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
+        self.obj_encoder = self.obj_encoder.eval() 
+        
+        self.mlp_3d = torch.nn.Sequential(
+            torch.nn.Linear(512, 512 - 8),
+            torch.nn.BatchNorm1d(512 - 8),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.1)
+        )      
         
         # Relationship Encoder
         self.rel_encoder_2d = PointNetfeat(
@@ -288,7 +292,9 @@ class Mmgnet(BaseModel):
     
     def forward(self, obj_points, obj_2d_feats, edge_indices, descriptor=None, batch_ids=None, istrain=False):
 
-        obj_feature = self.obj_encoder(obj_points)
+        with torch.no_grad():
+            obj_feature, _, _ = self.obj_encoder(obj_points)
+
         if istrain:
             obj_feature_3d_mimic = obj_feature[..., :512].clone()
         
