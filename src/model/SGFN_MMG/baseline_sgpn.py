@@ -88,17 +88,12 @@ class SGPN(BaseModel):
         self.optimizer.zero_grad()
 
 
-    def forward(self, obj_points, rel_points, edge_indices, descriptor):
+    def forward(self, obj_points, rel_points, edge_indices):
 
         obj_feature = self.obj_encoder(obj_points)
         
-        if self.mconfig.USE_SPATIAL:
-            tmp = descriptor[:,3:].clone()
-            tmp[:,6:] = tmp[:,6:].log() # only log on volume and length
-            obj_feature = torch.cat([obj_feature, tmp],dim=1)
-        
         rel_feature = self.rel_encoder(rel_points)
-        
+
         gcn_obj_feature, gcn_rel_feature = self.gcn(obj_feature, rel_feature, edge_indices)
         
         rel_cls = self.rel_predictor(rel_feature)
@@ -107,10 +102,10 @@ class SGPN(BaseModel):
 
         return obj_logits, rel_cls
 
-    def process_train(self, obj_points, rel_points, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
+    def process_train(self, obj_points, obj_2d_feats, gt_cls, rel_points, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
         self.iteration +=1    
         
-        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices.t().contiguous(), descriptor)
+        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices.t().contiguous())
         
         # compute loss for obj
         loss_obj = F.nll_loss(obj_pred, gt_cls)
@@ -147,9 +142,9 @@ class SGPN(BaseModel):
             ]
         return log
            
-    def process_val(self, obj_points, rel_points, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, use_triplet=False):
+    def process_val(self, obj_points, obj_2d_feats, gt_cls, rel_points, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, use_triplet=False):
  
-        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices.t().contiguous(), descriptor)
+        obj_pred, rel_pred = self(obj_points, rel_points, edge_indices.t().contiguous())
         
         # compute metric
         top_k_obj = evaluate_topk_object(obj_pred.detach().cpu(), gt_cls, topk=11)

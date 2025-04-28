@@ -25,7 +25,7 @@
   "WEIGHTING": true,
   "MODEL": {
     "N_LAYERS": 5,
-    "USE_SPATIAL": true,
+    "USE_SPATIAL": false,
     "WITH_BN": false,
     "USE_GCN": true,
     "USE_RGB": true, 
