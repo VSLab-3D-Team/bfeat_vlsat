@@ -11,6 +11,7 @@ from src.utils.eva_utils_acc import (evaluate_topk_object,
                                  evaluate_topk_predicate,
                                  evaluate_triplet_topk, get_gt)
 from src.utils.eval_utils_recall import *
+from src.model.model_utils.network_PointNetpt import PointNetEncoder
 
 class SGPN(BaseModel):
     """
@@ -43,13 +44,16 @@ class SGPN(BaseModel):
         dim_point_feature = 512
         
         # Object Encoder
-        self.obj_encoder = PointNetfeat(
-            global_feat=True, 
-            batch_norm=with_bn,
-            point_size=dim_point, 
-            input_transform=False,
-            feature_transform=mconfig.feature_transform,
-            out_size=dim_point_feature)      
+        self.obj_encoder = PointNetEncoder("cuda", channel=self.dim_point)   
+        self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
+        self.obj_encoder = self.obj_encoder.eval() 
+        
+        self.mlp_3d = torch.nn.Sequential(
+            torch.nn.Linear(512, 512 - 8),
+            torch.nn.BatchNorm1d(512 - 8),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.1)
+        )   
         
         # Relationship Encoder
         self.rel_encoder = PointNetfeat(
@@ -82,6 +86,7 @@ class SGPN(BaseModel):
             {'params':self.gcn.parameters(), 'lr':float(config.LR), 'weight_decay':self.config.W_DECAY, 'amsgrad':self.config.AMSGRAD},
             {'params':self.obj_predictor.parameters(), 'lr':float(config.LR), 'weight_decay':self.config.W_DECAY, 'amsgrad':self.config.AMSGRAD},
             {'params':self.rel_predictor.parameters(), 'lr':float(config.LR), 'weight_decay':self.config.W_DECAY, 'amsgrad':self.config.AMSGRAD},
+            {'params':self.mlp_3d.parameters(), 'lr':float(config.LR), 'weight_decay':self.config.W_DECAY, 'amsgrad':self.config.AMSGRAD},
             #{'params':self.mlp.parameters(), 'lr':float(config.LR), 'weight_decay':self.config.W_DECAY, 'amsgrad':self.config.AMSGRAD},
         ])
         self.lr_scheduler = CosineAnnealingLR(self.optimizer, T_max=self.config.max_iteration, last_epoch=-1)
@@ -90,7 +95,9 @@ class SGPN(BaseModel):
 
     def forward(self, obj_points, rel_points, edge_indices):
 
-        obj_feature = self.obj_encoder(obj_points)
+        with torch.no_grad():
+            obj_feature, _, _ = self.obj_encoder(obj_points)
+        obj_feature = self.mlp_3d(obj_feature)
         
         rel_feature = self.rel_encoder(rel_points)
 
