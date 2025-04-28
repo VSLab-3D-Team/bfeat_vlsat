@@ -18,7 +18,7 @@ def read_pointcloud(scan_id):
     """
     Reads a pointcloud from a file and returns points with instance label.
     """
-    plydata = trimesh.load(os.path.join('/data2/local_datasets/3RScan/data/3RScan', scan_id, 'labels.instances.annotated.v2.ply'), process=False)
+    plydata = trimesh.load(os.path.join('/local_datasets/3RScan/data/3RScan', scan_id, 'labels.instances.annotated.v2.ply'), process=False)
     points = np.array(plydata.vertices)
     labels = np.array(plydata.metadata['ply_raw']['vertex']['data']['objectId'])
 
@@ -95,7 +95,7 @@ def read_extrinsic(extrinsic_path):
     return pose
 
 def read_scan_info(scan_id, mode='depth'):
-    scan_path = os.path.join("/data2/local_datasets/3RScan/data/3RScan", scan_id)
+    scan_path = os.path.join("/local_datasets/3RScan/data/3RScan", scan_id)
     sequence_path = os.path.join(scan_path, "sequence")
     intrinsic_path = os.path.join(sequence_path, "_info.txt")
     intrinsic_info = read_intrinsic(intrinsic_path, mode=mode)
@@ -179,7 +179,7 @@ def map_depth_to_pc(points, instances, image_list, instance_names, extrinsics, i
                 classes[s].append(f'{str(i)}_{str(project_object_points)}')
     
     # save the result
-    json.dump(classes, open(os.path.join('/data2/local_datasets/3RScan/data/3RScan', scene_id, "classes_2.json"), "w"))
+    json.dump(classes, open(os.path.join('/local_datasets/3RScan/data/3RScan', scene_id, "classes_2.json"), "w"))
 
         
 if __name__ == '__main__':
