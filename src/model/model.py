@@ -92,7 +92,7 @@ class MMGNet():
     def data_processing_train(self, items):
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = items 
         obj_points = obj_points.permute(0,2,1).contiguous()
-        obj_2d_feats = obj_2d_feats.permute(0,2,1).contiguous()
+        descriptor = descriptor.permute(0,2,1).contiguous()
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = \
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids
@@ -101,7 +101,7 @@ class MMGNet():
     def data_processing_val(self, items):
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = items 
         obj_points = obj_points.permute(0,2,1).contiguous()
-        obj_2d_feats = obj_2d_feats.permute(0,2,1).contiguous()
+        descriptor = descriptor.permute(0,2,1).contiguous()
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = \
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids
