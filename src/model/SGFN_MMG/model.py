@@ -108,13 +108,6 @@ class Mmgnet(BaseModel):
         self.clip_adapter = AdapterModel(input_size=512, output_size=512, alpha=0.5)
         self.obj_logit_scale = torch.nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         
-        self.mlp_3d = torch.nn.Sequential(
-            torch.nn.Linear(512 + 256, 512 - 8),
-            torch.nn.BatchNorm1d(512 - 8),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(0.1)
-        )
-        
         if mconfig.multi_rel_outputs:
             self.rel_predictor_3d = PointNetRelClsMulti(
                 num_rel_class, 
