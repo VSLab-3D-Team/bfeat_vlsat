@@ -3,7 +3,7 @@
   "MODEL_PATH": "/data/spoiuy3/vlsat/src/model/model.py",
   "NAME": "Mmgnet",
   "PATH": "/data/spoiuy3/vlsat/output",
-  "multi_view_root": "/local_datasets/3RScan",
+  "multi_view_root": "/data2/local_datasets/3RScan/data/3RScan",
   "VERBOSE": false,
   "SEED": 2020,
   "MAX_EPOCHES": 100,
