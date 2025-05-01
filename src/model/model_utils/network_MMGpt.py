@@ -12,7 +12,7 @@ from src.model.transformer.attention import MultiHeadAttention
 class GraphEdgeAttenNetwork(torch.nn.Module):
     def __init__(self, num_heads, dim_node, dim_edge, dim_atten, aggr='max', use_bn=False,
                  flow='target_to_source', attention='fat', use_edge:bool=True, **kwargs):
-        super().__init__()  # "Max" aggregation.
+        super().__init__()
         self.name = 'edgeatten'
         self.dim_node = dim_node
         self.dim_edge = dim_edge
@@ -25,11 +25,21 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         else:
             raise NotImplementedError()
 
+        self.edge_gate = nn.Sequential(
+            nn.Linear(dim_edge, dim_edge // 2),
+            nn.ReLU(),
+            nn.Linear(dim_edge // 2, 1),
+            nn.Sigmoid()
+        )
+        
         self.edgeatten = MultiHeadedEdgeAttention(
             dim_node=dim_node, dim_edge=dim_edge, dim_atten=dim_atten,
             num_heads=num_heads, use_bn=use_bn, attention=attention, use_edge=use_edge, **kwargs)
-        self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
-                            do_bn=use_bn, on_last=False)
+        
+        self.prop = nn.Sequential(
+            build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node], do_bn=use_bn, on_last=False),
+            nn.LayerNorm(dim_node) if use_bn else nn.Identity()
+        )
         
         self.sigmoid = nn.Sigmoid()
 
@@ -49,6 +59,9 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             if (dst, src) in edge_dict:
                 reverse_idx = edge_dict[(dst, src)]
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
+        
+        gates = self.edge_gate(edge_feature)
+        reverse_edge_feature = gates * reverse_edge_feature
         
         xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
@@ -117,13 +130,15 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         self.num_heads = num_heads
         self.use_edge = use_edge
         
-        self.nn_edge = build_mlp([dim_node*2+dim_edge*2, (dim_node+dim_edge*2), dim_edge],
-                          do_bn=use_bn, on_last=False)
+        self.nn_edge = nn.Sequential(
+            build_mlp([dim_node*2+dim_edge*2, (dim_node+dim_edge*2), dim_edge],
+                      do_bn=use_bn, on_last=False),
+            nn.LayerNorm(dim_edge) if use_bn else nn.Identity()
+        )
+        
         self.mask_obj = 0.5
         
-        DROP_OUT_ATTEN = None
-        if 'DROP_OUT_ATTEN' in kwargs:
-            DROP_OUT_ATTEN = kwargs['DROP_OUT_ATTEN']
+        DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.3) 
         
         self.attention = attention
         assert self.attention in ['fat']
@@ -131,16 +146,20 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         if self.attention == 'fat':
             if use_edge:
                 self.nn = MLP([d_n+d_e, d_n+d_e, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+                self.layer_norm = nn.LayerNorm(d_o)
             else:
                 self.nn = MLP([d_n, d_n*2, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
+                self.layer_norm = nn.LayerNorm(d_o)
                 
             self.proj_edge = build_mlp([dim_edge, dim_edge])
             self.proj_query = build_mlp([dim_node, dim_node])
-            self.proj_value = build_mlp([dim_node, dim_atten])
+            self.proj_value = nn.Sequential(
+                build_mlp([dim_node, dim_atten]),
+                nn.LayerNorm(dim_atten) if use_bn else nn.Identity()
+            )
         elif self.attention == 'distance':
             self.proj_value = build_mlp([dim_node, dim_atten])
 
-        
     def forward(self, query, edge, reverse_edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
         
@@ -154,7 +173,9 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             if self.use_edge:
                 prob = self.nn(torch.cat([query, edge], dim=1))  # b, dim, head    
             else:
-                prob = self.nn(query)  # b, dim, head 
+                prob = self.nn(query)  # b, dim, head
+                
+            prob = self.layer_norm(prob)
             prob = prob.softmax(1)
             x = torch.einsum('bm,bm->bm', prob.reshape_as(value), value)
         
@@ -168,7 +189,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
     
 
 class MMG_pt_single(torch.nn.Module):
-
     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr='max', 
                  use_bn=False, flow='target_to_source', attention='fat', 
                  hidden_size=512, depth=1, use_edge:bool=True, **kwargs):
@@ -178,10 +198,16 @@ class MMG_pt_single(torch.nn.Module):
         self.num_heads = num_heads
         self.depth = depth
 
-        self.self_attn = nn.ModuleList(
-            MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) 
+        if 'DROP_OUT_ATTEN' not in kwargs:
+            kwargs['DROP_OUT_ATTEN'] = 0.3
+
+        self.self_attn = nn.ModuleList([
+            nn.Sequential(
+                MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads),
+                nn.LayerNorm(dim_node) if use_bn else nn.Identity()
+            )
             for i in range(depth)
-        )
+        ])
 
         self.gcn_3ds = torch.nn.ModuleList()
         
@@ -199,7 +225,7 @@ class MMG_pt_single(torch.nn.Module):
                             **kwargs))
         
         self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
-        self.self_attn_fc = nn.Sequential(  # 11 32 32 4(head)
+        self.self_attn_fc = nn.Sequential(
             nn.Linear(4, 32),  # xyz, dist
             nn.ReLU(),
             nn.LayerNorm(32),
@@ -209,6 +235,9 @@ class MMG_pt_single(torch.nn.Module):
             nn.Linear(32, num_heads)
         )
         
+        self.residual_proj = nn.ModuleList([
+            nn.Linear(dim_node, dim_node) for _ in range(depth)
+        ])
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
@@ -241,6 +270,7 @@ class MMG_pt_single(torch.nn.Module):
             attention_matrix_way = 'mul'
         
         for i in range(self.depth):
+            identity_obj = self.residual_proj[i](obj_feature_3d)
             
             obj_feature_3d = obj_feature_3d.unsqueeze(0)
             obj_feature_3d = self.self_attn[i](
@@ -250,7 +280,11 @@ class MMG_pt_single(torch.nn.Module):
             )
             obj_feature_3d = obj_feature_3d.squeeze(0)
             
-            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
+            obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
+            
+            obj_feature_3d = obj_feature_3d_new + identity_obj
+            edge_feature_3d = edge_feature_3d_new
+            
             if i < (self.depth-1) or self.depth==1:
                 obj_feature_3d = F.relu(obj_feature_3d)
                 obj_feature_3d = self.drop_out(obj_feature_3d)
