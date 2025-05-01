@@ -28,7 +28,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         self.edge_gate = nn.Sequential(
             nn.Linear(dim_edge, dim_edge // 2),
             nn.ReLU(),
-            nn.LayerNorm(dim_edge // 2),
+            nn.BatchNorm1d(dim_edge // 2),
             nn.Linear(dim_edge // 2, 1),
             nn.Sigmoid()
         )
@@ -144,10 +144,8 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         if self.attention == 'fat':
             if use_edge:
                 self.nn = MLP([d_n+d_e, d_n+d_e, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
-                self.layer_norm = nn.LayerNorm(d_o)
             else:
                 self.nn = MLP([d_n, d_n*2, d_o], do_bn=use_bn, drop_out=DROP_OUT_ATTEN)
-                self.layer_norm = nn.LayerNorm(d_o)
                 
             self.proj_edge = build_mlp([dim_edge, dim_edge])
             self.proj_query = build_mlp([dim_node, dim_node])
@@ -172,7 +170,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             else:
                 prob = self.nn(query)  # b, dim, head
                 
-            prob = self.layer_norm(prob)
             prob = prob.softmax(1)
             x = torch.einsum('bm,bm->bm', prob.reshape_as(value), value)
         
