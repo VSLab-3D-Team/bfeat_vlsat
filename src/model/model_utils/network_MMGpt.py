@@ -28,6 +28,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         self.edge_gate = nn.Sequential(
             nn.Linear(dim_edge, dim_edge // 2),
             nn.ReLU(),
+            nn.LayerNorm(dim_edge // 2),
             nn.Linear(dim_edge // 2, 1),
             nn.Sigmoid()
         )
@@ -36,10 +37,9 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             dim_node=dim_node, dim_edge=dim_edge, dim_atten=dim_atten,
             num_heads=num_heads, use_bn=use_bn, attention=attention, use_edge=use_edge, **kwargs)
         
-        self.prop = nn.Sequential(
-            build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node], do_bn=use_bn, on_last=False),
-            nn.LayerNorm(dim_node) if use_bn else nn.Identity()
-        )
+        self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
+                            do_bn=use_bn, on_last=False)
+        self.layer_norm = nn.LayerNorm(dim_node)
         
         self.sigmoid = nn.Sigmoid()
 
@@ -110,6 +110,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
         xx = F.relu(xx) * self.sigmoid(twinning_edge_attention)
         
         xx = self.prop(torch.cat([x, xx], dim=1))
+        xx = self.layer_norm(xx)
         
         return xx, gcn_edge_feature
 
@@ -130,15 +131,12 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
         self.num_heads = num_heads
         self.use_edge = use_edge
         
-        self.nn_edge = nn.Sequential(
-            build_mlp([dim_node*2+dim_edge*2, (dim_node+dim_edge*2), dim_edge],
-                      do_bn=use_bn, on_last=False),
-            nn.LayerNorm(dim_edge) if use_bn else nn.Identity()
-        )
-        
+        self.nn_edge = build_mlp([dim_node*2+dim_edge*2, (dim_node+dim_edge*2), dim_edge],
+                          do_bn=use_bn, on_last=False)
+        self.edge_layer_norm = nn.LayerNorm(dim_edge)
         self.mask_obj = 0.5
         
-        DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.3) 
+        DROP_OUT_ATTEN = kwargs.get('DROP_OUT_ATTEN', 0.5)  
         
         self.attention = attention
         assert self.attention in ['fat']
@@ -153,18 +151,17 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
                 
             self.proj_edge = build_mlp([dim_edge, dim_edge])
             self.proj_query = build_mlp([dim_node, dim_node])
-            self.proj_value = nn.Sequential(
-                build_mlp([dim_node, dim_atten]),
-                nn.LayerNorm(dim_atten) if use_bn else nn.Identity()
-            )
+            self.proj_value = build_mlp([dim_node, dim_atten])
         elif self.attention == 'distance':
             self.proj_value = build_mlp([dim_node, dim_atten])
 
+        
     def forward(self, query, edge, reverse_edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
         
         edge_feature = torch.cat([query, edge, reverse_edge, value], dim=1)
         edge_feature = self.nn_edge(edge_feature)
+        edge_feature = self.edge_layer_norm(edge_feature)
 
         if self.attention == 'fat':
             value = self.proj_value(value)
@@ -198,15 +195,13 @@ class MMG_pt_single(torch.nn.Module):
         self.num_heads = num_heads
         self.depth = depth
 
-        if 'DROP_OUT_ATTEN' not in kwargs:
-            kwargs['DROP_OUT_ATTEN'] = 0.3
-
-        self.self_attn = nn.ModuleList([
-            nn.Sequential(
-                MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads),
-                nn.LayerNorm(dim_node) if use_bn else nn.Identity()
-            )
+        self.self_attn = nn.ModuleList(
+            MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) 
             for i in range(depth)
+        )
+
+        self.layer_norms = nn.ModuleList([
+            nn.LayerNorm(dim_node) for _ in range(depth)
         ])
 
         self.gcn_3ds = torch.nn.ModuleList()
@@ -225,7 +220,7 @@ class MMG_pt_single(torch.nn.Module):
                             **kwargs))
         
         self.drop_out = torch.nn.Dropout(kwargs['DROP_OUT_ATTEN'])
-        self.self_attn_fc = nn.Sequential(
+        self.self_attn_fc = nn.Sequential(  # 11 32 32 4(head)
             nn.Linear(4, 32),  # xyz, dist
             nn.ReLU(),
             nn.LayerNorm(32),
@@ -273,14 +268,16 @@ class MMG_pt_single(torch.nn.Module):
             identity_obj = self.residual_proj[i](obj_feature_3d)
             
             obj_feature_3d = obj_feature_3d.unsqueeze(0)
-            obj_feature_3d = self.self_attn[i](
+            obj_feature_attn = self.self_attn[i](
                 obj_feature_3d, obj_feature_3d, obj_feature_3d, 
                 attention_weights=obj_distance_weight, way=attention_matrix_way, 
                 attention_mask=obj_mask, use_knn=False
             )
-            obj_feature_3d = obj_feature_3d.squeeze(0)
+            obj_feature_attn = obj_feature_attn.squeeze(0)
             
-            obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
+            obj_feature_attn = self.layer_norms[i](obj_feature_attn)
+            
+            obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_attn, edge_feature_3d, edge_index, istrain=istrain)
             
             obj_feature_3d = obj_feature_3d_new + identity_obj
             edge_feature_3d = edge_feature_3d_new
