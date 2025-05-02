@@ -98,7 +98,7 @@ class SGPN(BaseModel):
         
         rel_cls = self.rel_predictor(gcn_rel_feature)
 
-        obj_logits = self.obj_predictor(gcn_obj_feature)
+        obj_logits = self.obj_predictor(obj_feature)
 
         return obj_logits, rel_cls
 
