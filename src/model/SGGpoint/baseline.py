@@ -398,7 +398,7 @@ class SGGpoint(BaseModel):
             top_k_triplet, top_k_triplet, \
             cls_matrix, sub_scores, obj_scores, rel_scores, \
             sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
-            sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo,
+            sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo
   
     def backward(self, loss):
         loss.backward()
