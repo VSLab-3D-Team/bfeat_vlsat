@@ -241,11 +241,11 @@ class SGFN(BaseModel):
         
         for rel in range(len(rels_preds)):
             res = []
-            rel_pred = rels_preds[rel]
-            _, sorted_idx = torch.sort(rel_pred, descending=True)
+            _rel_pred = rels_preds[rel]
+            _, sorted_idx = torch.sort(_rel_pred, descending=True)
             
             for idx in sorted_idx[:topk]:
-                if rel_pred[idx]>0.5:
+                if _rel_pred[idx]>0.5:
                     res.append(idx)
                 else:
                     res.append(-1)
