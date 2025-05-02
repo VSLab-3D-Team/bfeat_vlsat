@@ -233,8 +233,8 @@ class SGFN(BaseModel):
         topk = 10
         for obj in range(len(objs_pred)):
             res = []
-            obj_pred = objs_pred[obj]
-            sorted_idx = torch.sort(obj_pred, descending=True)[1]
+            _obj_pred = objs_pred[obj]
+            sorted_idx = torch.sort(_obj_pred, descending=True)[1]
             for idx in sorted_idx[:topk]:
                 res.append(idx)
             obj_cls_viz.append(res)
