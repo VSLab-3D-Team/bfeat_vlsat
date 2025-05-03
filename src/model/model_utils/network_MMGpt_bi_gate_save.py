@@ -26,10 +26,10 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             raise NotImplementedError()
 
         self.edge_gate = nn.Sequential(
-            nn.Linear(dim_edge*2, dim_edge),
+            nn.Linear(dim_edge, dim_edge // 2),
             nn.ReLU(),
-            nn.BatchNorm1d(dim_edge),
-            nn.Linear(dim_edge, 2),
+            nn.BatchNorm1d(dim_edge // 2),
+            nn.Linear(dim_edge // 2, 1),
             nn.Sigmoid()
         )
         
@@ -60,13 +60,10 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
                 reverse_idx = edge_dict[(dst, src)]
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        gate_input = torch.cat([edge_feature, reverse_edge_feature], dim=1)
-        gates = self.edge_gate(gate_input)
+        gates = self.edge_gate(edge_feature)
+        reverse_edge_feature = gates * reverse_edge_feature
         
-        gated_forward_edge = gates[:, 0:1] * edge_feature
-        gated_reverse_edge = gates[:, 1:2] * reverse_edge_feature
-        
-        xx, gcn_edge_feature, prob = self.edgeatten(x_i, gated_forward_edge, gated_reverse_edge, x_j, weight, istrain=istrain)
+        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
         subject_edges = {}
         object_edges = {}
@@ -157,10 +154,10 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             self.proj_value = build_mlp([dim_node, dim_atten])
 
         
-    def forward(self, query, forward_edge, reverse_edge, value, weight=None, istrain=False):
+    def forward(self, query, edge, reverse_edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
         
-        edge_feature = torch.cat([query, forward_edge, reverse_edge, value], dim=1)
+        edge_feature = torch.cat([query, edge, reverse_edge, value], dim=1)
         edge_feature = self.nn_edge(edge_feature)
         edge_feature = self.edge_layer_norm(edge_feature)
 
