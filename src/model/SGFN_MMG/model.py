@@ -14,6 +14,7 @@ from src.model.model_utils.network_PointNet import (PointNetfeat,
 from src.utils.eva_utils_acc import (evaluate_topk_object,
                                  evaluate_topk_predicate,
                                  evaluate_triplet_topk, get_gt)
+from src.utils.eval_obj_impact import *
 from src.utils.eval_utils_recall import *
 from utils import op_utils
 
@@ -460,6 +461,33 @@ class Mmgnet(BaseModel):
  
         obj_logits_3d, obj_logits_2d, rel_cls_3d, rel_cls_2d = self(obj_points, obj_2d_feats, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=False)
         
+        obj_cls_viz=[]
+        rel_cls_viz=[]
+        
+        objs_pred=obj_logits_3d.detach().cpu()
+        rels_preds=rel_cls_3d.detach().cpu()
+
+        topk = 10
+        for obj in range(len(objs_pred)):
+            res = []
+            obj_pred = objs_pred[obj]
+            sorted_idx = torch.sort(obj_pred, descending=True)[1]
+            for idx in sorted_idx[:topk]:
+                res.append(idx)
+            obj_cls_viz.append(res)
+        
+        for rel in range(len(rels_preds)):
+            res = []
+            rel_pred = rels_preds[rel]
+            _, sorted_idx = torch.sort(rel_pred, descending=True)
+            
+            for idx in sorted_idx[:topk]:
+                if rel_pred[idx]>0.5:
+                    res.append(idx)
+                else:
+                    res.append(-1)
+            rel_cls_viz.append(res)
+        
         # compute metric
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach().cpu(), gt_cls, topk=11)
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
@@ -470,7 +498,18 @@ class Mmgnet(BaseModel):
         
         sgcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='triplet')
         predcls_recall_w = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='rels')
+        sgcls_recall_wo = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='triplet')
+        predcls_recall_wo = evaluate_triplet_recallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='rels')
+        sgcls_mean_recall_w = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='triplet')
+        predcls_mean_recall_w = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1, use_clip=True, evaluate='rels')
+        sgcls_mean_recall_wo = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='triplet')
+        predcls_mean_recall_wo = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='rels')
         
+        
+        """
+        Visualize for our hypothesis
+        """
+        entropy_obj_scene = object_entropy(obj_logits_3d.detach()).cpu().numpy()
         
         if use_triplet:
             top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
@@ -482,7 +521,13 @@ class Mmgnet(BaseModel):
             obj_scores = None
             rel_scores = None
 
-        return top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, top_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w
+        return top_k_obj, top_k_obj_2d, \
+            top_k_rel, top_k_rel_2d, \
+            top_k_triplet, top_k_2d_triplet, \
+            cls_matrix, sub_scores, obj_scores, rel_scores, \
+            sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
+            sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, \
+            obj_cls_viz, rel_cls_viz, entropy_obj_scene
  
     
     def backward(self, loss):

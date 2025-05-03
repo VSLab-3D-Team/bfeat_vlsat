@@ -14,6 +14,7 @@ from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls,
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
 from clip_adapter.model import AdapterModel
+from src.utils.eval_obj_impact import *
 
 class Mmgnet(BaseModel):
     def __init__(self, config, num_obj_class, num_rel_class, dim_descriptor=11):
@@ -469,6 +470,7 @@ class Mmgnet(BaseModel):
         sgcls_mean_recall_wo = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='triplet')
         predcls_mean_recall_wo = evaluate_triplet_mrecallk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, [20,50,100], 1000, use_clip=True, evaluate='rels')
         
+        entropy_obj_scene = object_entropy(obj_logits_3d.detach()).cpu().numpy()
         
         if use_triplet:
             top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
@@ -485,7 +487,7 @@ class Mmgnet(BaseModel):
             cls_matrix, sub_scores, obj_scores, rel_scores, \
             sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
             sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, \
-            obj_cls_viz, rel_cls_viz
+            obj_cls_viz, rel_cls_viz, entropy_obj_scene
 
     def backward(self, loss):
         loss.backward()

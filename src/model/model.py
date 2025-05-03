@@ -10,8 +10,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
-# from src.model.SGFN_MMG.model import Mmgnet
-from src.model.SGFN_MMG.model_pt import Mmgnet
+from src.model.SGFN_MMG.model import Mmgnet
+# from src.model.SGFN_MMG.model_pt import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 from src.utils.eval_utils_recall import *
@@ -230,7 +230,13 @@ class MMGNet():
             obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_val(items)            
             
             with torch.no_grad():
-                top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet, cls_matrix, sub_scores, obj_scores, rel_scores, sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, obj_cls_viz, rel_cls_viz \
+                top_k_obj, top_k_obj_2d, \
+                top_k_rel, top_k_rel_2d, \
+                tok_k_triplet, top_k_2d_triplet, \
+                cls_matrix, sub_scores, obj_scores, rel_scores, \
+                sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
+                sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, \
+                obj_cls_viz, rel_cls_viz, entropy_obj \
                     = self.model.process_val(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, use_triplet=True)
                 
             ''' calculate metrics '''
@@ -275,7 +281,7 @@ class MMGNet():
                     ("Acc@100/triplet_2d", (topk_triplet_2d_list <= 100).sum() * 100 / len(topk_triplet_2d_list)),]
 
             progbar.add(1, values=logs if self.config.VERBOSE else [x for x in logs if not x[0].startswith('Loss')])
-            save_scan(i, loglist, gt_class, gt_rel_cls, edge_indices, obj_cls_viz, rel_cls_viz, top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet)
+            save_scan(i, loglist, gt_class, gt_rel_cls, edge_indices, obj_cls_viz, rel_cls_viz, entropy_obj, top_k_obj, top_k_obj_2d, top_k_rel, top_k_rel_2d, tok_k_triplet, top_k_2d_triplet)
         
         save_log(loglist)
 
