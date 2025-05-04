@@ -11,6 +11,7 @@ from src.utils.eva_utils_acc import (evaluate_topk_object,
                                  evaluate_topk_predicate,
                                  evaluate_triplet_topk, get_gt)
 from src.utils.eval_utils_recall import *
+from src.utils.eval_obj_impact import *
 
 class SGPN(BaseModel):
     """
@@ -173,6 +174,8 @@ class SGPN(BaseModel):
                     res.append(-1)
             rel_cls_viz.append(res)
         
+        entropy_obj_scene = object_entropy(obj_pred.detach()).cpu().numpy()
+        
         # compute metric
         top_k_obj = evaluate_topk_object(obj_pred.detach().cpu(), gt_cls, topk=11)
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
@@ -202,7 +205,7 @@ class SGPN(BaseModel):
             cls_matrix, sub_scores, obj_scores, rel_scores, \
             sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
             sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, \
-            obj_cls_viz, rel_cls_viz
+            obj_cls_viz, rel_cls_viz, entropy_obj_scene
     def backward(self, loss):
         loss.backward()
         self.optimizer.step()
