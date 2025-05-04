@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg, collate_fn_mmg_sgpn)
 from src.dataset.dataset_builder import build_dataset
-from src.model.SGFN_MMG.baseline_sgfn import SGFN
+from src.model.SGFN_MMG.model import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 from src.utils.eval_utils_recall import *
@@ -76,7 +76,7 @@ class MMGNet():
         self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
         
         ''' Build Model '''
-        self.model = SGFN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
         self.samples_path = os.path.join(config.PATH, self.model_name, self.exp,  'samples')
         self.results_path = os.path.join(config.PATH, self.model_name, self.exp, 'results')
         self.trace_path = os.path.join(config.PATH, self.model_name, self.exp, 'traced')
