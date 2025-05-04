@@ -112,7 +112,7 @@ if __name__ == "__main__":
             label="Error rate")
     ax2.set_ylabel("Error rate", color="C1")
     ax2.tick_params(axis='y', labelcolor="C1")
-    ax2.set_ylim(0, 0.6)
+    ax2.set_ylim(0, 0.65)
 
     # 범례 합치기
     lines, labels = ax1.get_legend_handles_labels()
