@@ -26,7 +26,8 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             raise NotImplementedError()
 
         self.edge_gate = nn.Sequential(
-            nn.Linear(dim_edge*2 + dim_node*2, dim_edge),
+            # nn.Linear(dim_edge*2 + dim_node*2, dim_edge),
+            nn.Linear(dim_edge*2, dim_edge),
             nn.ReLU(),
             nn.BatchNorm1d(dim_edge),
             nn.Linear(dim_edge, 2),
@@ -60,9 +61,10 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
                 reverse_idx = edge_dict[(dst, src)]
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        node_i_feat = x_i
-        node_j_feat = x_j
-        gate_input = torch.cat([edge_feature, reverse_edge_feature, node_i_feat, node_j_feat], dim=1)
+        # node_i_feat = x_i
+        # node_j_feat = x_j
+        # gate_input = torch.cat([edge_feature, reverse_edge_feature, node_i_feat, node_j_feat], dim=1)
+        gate_input = torch.cat([edge_feature, reverse_edge_feature], dim=1)
         gates = self.edge_gate(gate_input)
         
         gated_forward_edge = gates[:, 0:1] * edge_feature
