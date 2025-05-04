@@ -112,7 +112,7 @@ if __name__ == "__main__":
             label="Error rate")
     ax2.set_ylabel("Error rate", color="C1")
     ax2.tick_params(axis='y', labelcolor="C1")
-    ax2.set_ylim(0, 0.5)
+    ax2.set_ylim(0, 0.6)
 
     # 범례 합치기
     lines, labels = ax1.get_legend_handles_labels()
@@ -121,4 +121,4 @@ if __name__ == "__main__":
 
     plt.title("Entropy histogram and per-bin error rate")
     plt.tight_layout()
-    plt.savefig("./hypothesis.png")
+    plt.savefig("./sgfn.png")
