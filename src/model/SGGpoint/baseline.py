@@ -378,6 +378,34 @@ class SGGpoint(BaseModel):
     def process_val(self, obj_points, obj_2d_feats, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, use_triplet=False):
         obj_logits_3d, rel_cls_3d = self(obj_points, obj_2d_feats, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=False)
          # compute metric
+         
+        obj_cls_viz=[]
+        rel_cls_viz=[]
+        
+        objs_pred=obj_logits_3d.detach().cpu()
+        rels_preds=rel_cls_3d.detach().cpu()
+
+        topk = 10
+        for obj in range(len(objs_pred)):
+            res = []
+            obj_pred = objs_pred[obj]
+            sorted_idx = torch.sort(obj_pred, descending=True)[1]
+            for idx in sorted_idx[:topk]:
+                res.append(idx)
+            obj_cls_viz.append(res)
+        
+        for rel in range(len(rels_preds)):
+            res = []
+            rel_pred = rels_preds[rel]
+            _, sorted_idx = torch.sort(rel_pred, descending=True)
+            
+            for idx in sorted_idx[:topk]:
+                if rel_pred[idx]>0.5:
+                    res.append(idx)
+                else:
+                    res.append(-1)
+            rel_cls_viz.append(res)
+         
         top_k_obj = evaluate_topk_object(obj_logits_3d.detach().cpu(), gt_cls, topk=11)
         gt_edges = get_gt(gt_cls, gt_rel_cls, edge_indices, self.mconfig.multi_rel_outputs)
         top_k_rel = evaluate_topk_predicate(rel_cls_3d.detach().cpu(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
@@ -398,7 +426,8 @@ class SGGpoint(BaseModel):
             top_k_triplet, top_k_triplet, \
             cls_matrix, sub_scores, obj_scores, rel_scores, \
             sgcls_recall_w, predcls_recall_w, sgcls_recall_wo, predcls_recall_wo, \
-            sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo
+            sgcls_mean_recall_w, predcls_mean_recall_w, sgcls_mean_recall_wo, predcls_mean_recall_wo, \
+            obj_cls_viz, rel_cls_viz
   
     def backward(self, loss):
         loss.backward()
