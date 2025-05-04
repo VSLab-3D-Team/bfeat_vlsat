@@ -107,8 +107,12 @@ if __name__ == "__main__":
     ax1.tick_params(axis='y', labelcolor="C0")
 
     # 오류율 (line, 0~1)
+    nonzero_mask = error_rate > 0
+    filtered_centers = bin_centers[nonzero_mask]
+    filtered_errors = error_rate[nonzero_mask]
+
     ax2 = ax1.twinx()
-    ax2.plot(bin_centers, error_rate, marker='o', linestyle='-', color="C1",
+    ax2.plot(filtered_centers, filtered_errors, marker='o', linestyle='-', color="C1",
             label="Error rate")
     ax2.set_ylabel("Error rate", color="C1")
     ax2.tick_params(axis='y', labelcolor="C1")
