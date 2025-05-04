@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-data_path = "/data/spoiuy3/vlsat/viz_sgpn"
+data_path = "/data/spoiuy3/vlsat/viz_sgfn"
 def Predicate_Object_Correlation(topk=1):
     wrong_count=[0, 0, 0]
     total_count=[0, 0, 0]
