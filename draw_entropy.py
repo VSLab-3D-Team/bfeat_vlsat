@@ -66,7 +66,7 @@ if __name__ == "__main__":
     ent   = np.array(ent)
     wrong = np.array(wrong)      # 1=틀림, 0=정답
     
-    mask = ent <= 1.55
+    mask = ent <= 1.5
     ent = ent[mask]
     wrong = wrong[mask]
 
