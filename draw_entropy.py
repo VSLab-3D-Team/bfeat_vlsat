@@ -66,9 +66,9 @@ if __name__ == "__main__":
     ent   = np.array(ent)
     wrong = np.array(wrong)      # 1=틀림, 0=정답
     
-    mask = ent <= 0.2
-    ent = ent[mask]
-    wrong = wrong[mask]
+    #mask = ent <= 0.2
+    #ent = ent[mask]
+    #wrong = wrong[mask]
 
     # --------------------------------------------------------------
     # 2) bin 경계 정의
