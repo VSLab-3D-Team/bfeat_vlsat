@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-def save_gt(i, gt_class, gt_rel_cls, edge_indices, visualization_path="/data/spoiuy3/vlsat/viz_sgpn"):
+def save_gt(i, gt_class, gt_rel_cls, edge_indices, visualization_path="/data/spoiuy3/vlsat/viz_sgfn"):
     save_gt_path=os.path.join(visualization_path,str(i))
     os.makedirs(save_gt_path,exist_ok=True)
     
@@ -9,7 +9,7 @@ def save_gt(i, gt_class, gt_rel_cls, edge_indices, visualization_path="/data/spo
     np.save(os.path.join(save_gt_path,'gt_rel_cls.npy'), gt_rel_cls.detach().cpu().numpy())
     np.save(os.path.join(save_gt_path,'edge_indices.npy'), edge_indices.detach().cpu().numpy())
     
-def save_prediction(i, cls, rel_cls, obj_entropy, visualization_path="/data/spoiuy3/vlsat/viz_sgpn"):
+def save_prediction(i, cls, rel_cls, obj_entropy, visualization_path="/data/spoiuy3/vlsat/viz_sgfn"):
     save_gt_path=os.path.join(visualization_path,str(i))
     os.makedirs(save_gt_path,exist_ok=True)
     
@@ -42,5 +42,5 @@ def save_scan(i, loglist, gt_class, gt_rel_cls, edge_indices, cls, rel_cls, obj_
     save_gt(i, gt_class, gt_rel_cls, edge_indices)
     save_prediction(i, cls, rel_cls, obj_entropy)
     
-def save_log(loglist, visualization_path="/data/spoiuy3/vlsat/viz_sgpn"):
+def save_log(loglist, visualization_path="/data/spoiuy3/vlsat/viz_sgfn"):
     np.save(os.path.join(visualization_path,'logs.npy'), loglist)
