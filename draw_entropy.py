@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-data_path = "/data/spoiuy3/vlsat/viz_sgpn"
+data_path = "/data/spoiuy3/vlsat/viz_sgfn"
 def Predicate_Object_Correlation(topk=1):
     wrong_count=[0, 0, 0]
     total_count=[0, 0, 0]
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     ax1.set_xlabel("Entropy")
     ax1.set_ylabel("Count", color="C0")
     ax1.tick_params(axis='y', labelcolor="C0")
+    ax1.set_xlim(0, 1.0)
 
     # 오류율 (line, 0~1)
     ax2 = ax1.twinx()
