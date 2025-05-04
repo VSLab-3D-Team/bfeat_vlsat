@@ -65,6 +65,10 @@ if __name__ == "__main__":
     ent, wrong = zip(*entropy_pred_graph)
     ent   = np.array(ent)
     wrong = np.array(wrong)      # 1=틀림, 0=정답
+    
+    mask = ent <= 1.0
+    ent = ent[mask]
+    wrong = wrong[mask]
 
     # --------------------------------------------------------------
     # 2) bin 경계 정의
@@ -101,7 +105,6 @@ if __name__ == "__main__":
     ax1.set_xlabel("Entropy")
     ax1.set_ylabel("Count", color="C0")
     ax1.tick_params(axis='y', labelcolor="C0")
-    ax1.set_xlim(0, 1.0)
 
     # 오류율 (line, 0~1)
     ax2 = ax1.twinx()
