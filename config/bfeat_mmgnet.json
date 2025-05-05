@@ -56,7 +56,7 @@
       "NONE_RATIO": 1.0,
       "NUM_HEADS": 8,
       "use_pretrain":"",
-      "obj_pretrian_path": "/data/spoiuy3/vlsat/model_ckp/only_contrastive.pth",
+      "obj_pretrian_path": "/data/spoiuy3/vlsat/model_checkpoints/pc_encoder_mv_vl.pth",
       "use_descriptor": true,
       "obj_label_path":"/data/spoiuy3/vlsat/data/3DSSG_subset/classes.txt",
       "rel_label_path":"/data/spoiuy3/vlsat/data/3DSSG_subset/relations.txt",
