@@ -31,21 +31,18 @@ class RelFeatNaiveExtractor(nn.Module):
         self.geo_proj = nn.Linear(geo_dim, 512)
         self.merge_layer = nn.Conv1d(in_channels=3, out_channels=1, kernel_size=5, stride=1, padding="same")
         
-        #self.res_blocks = nn.Sequential(*[ResidualBlock(512) for _ in range(num_layers)])
-        self.mlp = build_mlp([out_dim, out_dim])
+        self.res_blocks = nn.Sequential(*[ResidualBlock(512) for _ in range(num_layers)])
         self.fc_out = nn.Linear(512, out_dim)  # 출력 레이어
 
     def forward(self, x_i: torch.Tensor, x_j: torch.Tensor, geo_feats: torch.Tensor):
         # All B X N_feat size
-        #p_i, p_j, g_ij = self.obj_proj(x_i), self.obj_proj(x_j), self.geo_proj(geo_feats)
-        g_ij = self.geo_proj(geo_feats)
-        #m_ij = torch.cat([
-        #    p_i.unsqueeze(1), p_j.unsqueeze(1), g_ij.unsqueeze(1)
-        #], dim=1)
+        p_i, p_j, g_ij = self.obj_proj(x_i), self.obj_proj(x_j), self.geo_proj(geo_feats)
+        m_ij = torch.cat([
+            p_i.unsqueeze(1), p_j.unsqueeze(1), g_ij.unsqueeze(1)
+        ], dim=1)
         
-        #e_ij = self.merge_layer(m_ij).squeeze(1) # B X 512
-        #r_ij = self.res_blocks(e_ij)
-        r_ij = self.mlp(g_ij)
+        e_ij = self.merge_layer(m_ij).squeeze(1) # B X 512
+        r_ij = self.res_blocks(e_ij)
         return self.fc_out(r_ij)
 
 class RelFeatMergeExtractor(nn.Module):
