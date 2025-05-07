@@ -26,11 +26,10 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             raise NotImplementedError()
 
         self.edge_gate = nn.Sequential(
-            # nn.Linear(dim_edge*2 + dim_node*2, dim_edge),
-            nn.Linear(dim_edge*2, dim_edge),
+            nn.Linear(dim_edge, dim_edge // 2),
             nn.ReLU(),
-            nn.BatchNorm1d(dim_edge),
-            nn.Linear(dim_edge, 2),
+            nn.BatchNorm1d(dim_edge // 2),
+            nn.Linear(dim_edge // 2, 1),
             nn.Sigmoid()
         )
         
@@ -61,16 +60,10 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
                 reverse_idx = edge_dict[(dst, src)]
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        # node_i_feat = x_i
-        # node_j_feat = x_j
-        # gate_input = torch.cat([edge_feature, reverse_edge_feature, node_i_feat, node_j_feat], dim=1)
-        gate_input = torch.cat([edge_feature, reverse_edge_feature], dim=1)
-        gates = self.edge_gate(gate_input)
+        gates = self.edge_gate(edge_feature)
+        reverse_edge_feature = gates * reverse_edge_feature
         
-        gated_forward_edge = gates[:, 0:1] * edge_feature
-        gated_reverse_edge = gates[:, 1:2] * reverse_edge_feature
-        
-        xx, gcn_edge_feature, prob = self.edgeatten(x_i, gated_forward_edge, gated_reverse_edge, x_j, weight, istrain=istrain)
+        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
         subject_edges = {}
         object_edges = {}
@@ -161,17 +154,17 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             self.proj_value = build_mlp([dim_node, dim_atten])
 
         
-    def forward(self, query, forward_edge, reverse_edge, value, weight=None, istrain=False):
+    def forward(self, query, edge, reverse_edge, value, weight=None, istrain=False):
         batch_dim = query.size(0)
         
-        edge_feature = torch.cat([query, forward_edge, reverse_edge, value], dim=1)
+        edge_feature = torch.cat([query, edge, reverse_edge, value], dim=1)
         edge_feature = self.nn_edge(edge_feature)
         edge_feature = self.edge_layer_norm(edge_feature)
 
         if self.attention == 'fat':
             value = self.proj_value(value)
             query = self.proj_query(query).view(batch_dim, self.d_n, self.num_heads)
-            edge = self.proj_edge(forward_edge).view(batch_dim, self.d_e, self.num_heads)
+            edge = self.proj_edge(edge).view(batch_dim, self.d_e, self.num_heads)
             if self.use_edge:
                 prob = self.nn(torch.cat([query, edge], dim=1))  # b, dim, head    
             else:
