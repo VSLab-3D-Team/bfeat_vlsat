@@ -5,6 +5,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 
 
 data_path = "/media/michael/ssd1/SceneGraph/bfeat_vl_sat_viz"
@@ -93,20 +94,32 @@ if __name__ == "__main__":
     # --------------------------------------------------------------
     # 4) 시각화
     # --------------------------------------------------------------
+    plt.rcParams.update({
+        "font.family": "serif",        # Computer Modern
+        "font.size": 8,
+        "axes.labelsize": 8,
+        "legend.fontsize": 7,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+    })
     fig, ax1 = plt.subplots(figsize=(7, 4))
 
     # 히스토그램 (빈도)
     ax1.bar(bin_centers, hist, width=np.diff(bin_edges), alpha=0.6,
-            label="Sample count", color="C0", edgecolor="black")
-    ax1.set_xlabel("Entropy")
-    ax1.set_ylabel("Count", color="C0")
+            label="Sample count", color="0.7", edgecolor="0.4")
+    ax1.set_xlabel(r"Classification Entropy $H(o|z)$")
+    ax1.set_ylabel("Frequency", color="C0")
+    ax1.yaxis.set_major_locator(MaxNLocator(5))
     ax1.tick_params(axis='y', labelcolor="C0")
 
     # 오류율 (line, 0~1)
     ax2 = ax1.twinx()
-    ax2.plot(bin_centers, error_rate, marker='o', linestyle='-', color="C1",
-            label="Error rate")
+    ax2.plot(
+        bin_centers, error_rate, marker='o', linewidth=1.1, 
+        markersize=3, label="Error rate"
+    )
     ax2.set_ylabel("Error rate", color="C1")
+    ax2.yaxis.set_major_locator(MaxNLocator(4))
     ax2.tick_params(axis='y', labelcolor="C1")
     ax2.set_ylim(0, 0.3)
 
@@ -115,6 +128,6 @@ if __name__ == "__main__":
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines + lines2, labels + labels2, loc="upper right")
 
-    plt.title("Entropy histogram and per-bin error rate")
+    # plt.title("Entropy histogram and per-bin error rate")
     plt.tight_layout()
-    plt.savefig("./hypothesis.png")
+    plt.savefig("./hypothesis.png", dpi=300, bbox_inches="tight")
