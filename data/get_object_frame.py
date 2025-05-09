@@ -18,7 +18,7 @@ def read_pointcloud(scan_id):
     """
     Reads a pointcloud from a file and returns points with instance label.
     """
-    plydata = trimesh.load(os.path.join('/media/michael/ssd1/SceneGraph/3DSSG/3RScan/data/3RScan', scan_id, 'labels.instances.annotated.v2.ply'), process=False)
+    plydata = trimesh.load(os.path.join('/data2/local_datasets/3RScan/data/3RScan', scan_id, 'labels.instances.annotated.v2.ply'), process=False)
     points = np.array(plydata.vertices)
     labels = np.array(plydata.metadata['ply_raw']['vertex']['data']['objectId'])
 
@@ -30,16 +30,16 @@ def read_json(split):
     """
     selected_scans = set()
     if split == 'train_scans_1' or split == 'train_scans_2' or split == 'train_scans_3' or split == 'train_scans_4':
-        selected_scans = selected_scans.union(read_txt_to_list(f'/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/{split}.txt'))
-        with open("/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/relationships_train.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list(f'/data/spoiuy3/vlsat/data/3DSSG_subset/{split}.txt'))
+        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
             data = json.load(read_file)
     elif split == 'train' :
-        selected_scans = selected_scans.union(read_txt_to_list('/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/train_scans.txt'))
-        with open("/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/relationships_train.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/train_scans.txt'))
+        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
             data = json.load(read_file)
     elif split == 'val':
-        selected_scans = selected_scans.union(read_txt_to_list('/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/validation_scans.txt'))
-        with open("/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/relationships_validation.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/validation_scans.txt'))
+        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_validation.json", "r") as read_file:
             data = json.load(read_file)
     else:
         raise RuntimeError('unknown split type:',split)
@@ -95,7 +95,7 @@ def read_extrinsic(extrinsic_path):
     return pose
 
 def read_scan_info(scan_id, mode='depth'):
-    scan_path = os.path.join("/media/michael/ssd1/SceneGraph/3DSSG/3RScan/data/3RScan", scan_id)
+    scan_path = os.path.join("/data2/local_datasets/3RScan/data/3RScan", scan_id)
     sequence_path = os.path.join(scan_path, "sequence")
     intrinsic_path = os.path.join(sequence_path, "_info.txt")
     intrinsic_info = read_intrinsic(intrinsic_path, mode=mode)
@@ -179,7 +179,7 @@ def map_depth_to_pc(points, instances, image_list, instance_names, extrinsics, i
                 classes[s].append(f'{str(i)}_{str(project_object_points)}')
     
     # save the result
-    json.dump(classes, open(os.path.join('/media/michael/ssd1/SceneGraph/3DSSG/3RScan/data/3RScan', scene_id, "classes_2.json"), "w"))
+    json.dump(classes, open(os.path.join('/data2/local_datasets/3RScan/data/3RScan', scene_id, "classes_2.json"), "w"))
 
         
 if __name__ == '__main__':
@@ -194,5 +194,5 @@ if __name__ == '__main__':
         # print(f'======= read image and extrinsic for {i} =========')
         image_list, extrinsic_list, intrinsic_info = read_scan_info(i)
         # print(f'======= map pointcloud to image =========')
-        class_list = get_label('/media/michael/ssd1/SceneGraph/3DSSG/3DSSG_subset/classes.txt')
+        class_list = get_label('/data/spoiuy3/vlsat/data/3DSSG_subset/classes.txt')
         map_depth_to_pc(pc_i, instances_i, image_list, instance_names, extrinsic_list, intrinsic_info['m_intrinsic'], intrinsic_info['m_Width'], intrinsic_info['m_Height'], class_list, i)
