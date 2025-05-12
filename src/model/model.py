@@ -136,6 +136,8 @@ class MMGNet():
         for k, p in self.model.named_parameters():
             if p.requires_grad:
                 print(f"Para {k} need grad")
+                
+        val_interval = 10
         ''' Train '''
         while(keep_training):
 
@@ -167,12 +169,17 @@ class MMGNet():
                     self.log(logs, iteration)
                 if self.model.iteration >= self.max_iteration:
                     break
-
+            
             progbar = op_utils.Progbar(self.total, width=20, stateful_metrics=['Misc/epo', 'Misc/it'])
             loader = iter(train_loader)
             self.save()
 
-            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
+            if (self.model.epoch < 30):
+                val_interval = 10
+            else:
+                val_interval = 2
+            
+            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % val_interval == 0):
                 print('start validation...')
                 rel_acc_val = self.validation()
                 self.model.eva_res = rel_acc_val
