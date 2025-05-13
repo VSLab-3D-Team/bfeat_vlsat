@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from src.model.model_utils.network_util import build_mlp
 
 class ResidualBlock(nn.Module):
     def __init__(self, dim):
