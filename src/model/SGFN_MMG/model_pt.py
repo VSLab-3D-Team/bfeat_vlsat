@@ -59,12 +59,12 @@ class Mmgnet(BaseModel):
         self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
         self.obj_encoder = self.obj_encoder.eval()
         
-        self.rel_encoder_3d = RelFeatNaiveExtractor(
-            dim_point_feature,
-            dim_descriptor,
-            dim_edge_feature,
-            num_layers=8
-        ) #.to("cuda")
+        # self.rel_encoder_3d = RelFeatNaiveExtractor(
+        #     dim_point_feature,
+        #     dim_descriptor,
+        #     dim_edge_feature,
+        #     num_layers=8
+        # ) #.to("cuda")
 
         self.rel_encoder_3d = GeocentricRelationEncoder(
             input_dim=dim_point_feature,
