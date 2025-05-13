@@ -46,6 +46,86 @@ class RelFeatNaiveExtractor(nn.Module):
         #r_ij = self.res_blocks(e_ij)
         r_ij = self.mlp(e_ij)
         return self.fc_out(r_ij)
+    
+class ResidualBlock(nn.Module):
+    def __init__(self, dim):
+        super(ResidualBlock, self).__init__()
+        self.block = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.LayerNorm(dim),
+            nn.ReLU(),
+            nn.Linear(dim, dim),
+            nn.LayerNorm(dim)
+        )
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        residual = x
+        out = self.block(x)
+        out += residual
+        return self.relu(out)
+
+class GeocentricRelationEncoder(nn.Module):
+    def __init__(self, input_dim, geo_dim, hidden_dim=256, geo_factor=4, num_layers=2):
+
+        super(GeocentricRelationEncoder, self).__init__()
+        
+        self.out_dim = 512
+        
+        self.obj_encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU()
+        )
+        
+        self.geo_primary = nn.Sequential(
+            nn.Linear(geo_dim, hidden_dim // geo_factor),
+            nn.LayerNorm(hidden_dim // geo_factor),
+            nn.ReLU()
+        )
+        
+        self.geo_gate = nn.Sequential(
+            nn.Linear(geo_dim, hidden_dim),
+            nn.Sigmoid()
+        )
+        
+        self.geo_modulator = nn.Sequential(
+            nn.Linear(geo_dim, hidden_dim),
+            nn.Tanh()
+        )
+        
+        self.integration = nn.Sequential(
+            nn.Linear(hidden_dim + hidden_dim // geo_factor, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU()
+        )
+        
+        self.res_blocks = nn.Sequential(
+            *[ResidualBlock(hidden_dim) for _ in range(num_layers)]
+        )
+        
+        self.fc_out = nn.Linear(hidden_dim, self.out_dim)
+        
+    def forward(self, x_i: torch.Tensor, x_j: torch.Tensor, geo_feats: torch.Tensor):
+        
+        obj_i_enc = self.obj_encoder(x_i)
+        obj_j_enc = self.obj_encoder(x_j)
+        combined_obj = (obj_i_enc + obj_j_enc) / 2
+        
+        geo_primary = self.geo_primary(geo_feats)
+        
+        geo_gate = self.geo_gate(geo_feats)
+        geo_mod = self.geo_modulator(geo_feats)
+        
+        modulated_obj = combined_obj * (1 + geo_mod * geo_gate)
+        
+        integrated = self.integration(torch.cat([modulated_obj, geo_primary], dim=1))
+        
+        refined = self.res_blocks(integrated)
+        
+        out_feats = self.fc_out(refined)
+        
+        return out_feats
 
 class RelFeatMergeExtractor(nn.Module):
     def __init__(self, dim_obj_feats, dim_geo_feats, dim_out_feats):

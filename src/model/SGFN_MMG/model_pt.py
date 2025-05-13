@@ -13,6 +13,7 @@ from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
+from src.model.model_utils.network_RelFeatNet import GeocentricRelationEncoder
 from clip_adapter.model import AdapterModel
 
 class Mmgnet(BaseModel):
@@ -64,6 +65,15 @@ class Mmgnet(BaseModel):
             dim_edge_feature,
             num_layers=8
         ) #.to("cuda")
+
+        self.rel_encoder_3d = GeocentricRelationEncoder(
+            input_dim=dim_point_feature,
+            geo_dim=dim_descriptor,
+            hidden_dim=256,
+            geo_factor=4,
+            num_layers=2
+        )
+
         # self.rel_encoder_3d = PointNetfeat(
         #     global_feat=True,
         #     batch_norm=with_bn,
