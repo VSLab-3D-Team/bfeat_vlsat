@@ -52,12 +52,12 @@ def read_json(split):
     """
     selected_scans = set()
     if split == 'train' :
-        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/train_scans.txt'))
-        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/hkh7710/sy/vlsat/data/3DSSG_subset/train_scans.txt'))
+        with open("/data/hkh7710/sy/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
             data = json.load(read_file)
     elif split == 'val':
-        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/validation_scans.txt'))
-        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_validation.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/hkh7710/sy/vlsat/data/3DSSG_subset/validation_scans.txt'))
+        with open("/data/hkh7710/sy/vlsat/data/3DSSG_subset/relationships_validation.json", "r") as read_file:
             data = json.load(read_file)
     else:
         raise RuntimeError('unknown split type:',split)
@@ -335,6 +335,6 @@ if __name__ == '__main__':
         save_path = f'/data2/local_datasets/3RScan/data/3RScan/{i}/multi_view'
         os.makedirs(save_path, exist_ok=True)
         # print(f'======= map pointcloud to image =========')
-        class_list, class_weight = get_label('/data/spoiuy3/vlsat/data/3DSSG_subset/classes.txt')
+        class_list, class_weight = get_label('/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt')
         map_pc_to_image(pc_i, instances_i, image_list, instance_names, extrinsic_list, intrinsic_info['m_intrinsic'], intrinsic_info['m_Width'], intrinsic_info['m_Height'], class_list, class_weight, save_path, i, fin_all)
     fin_all.close()

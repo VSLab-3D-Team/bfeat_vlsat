@@ -16,12 +16,12 @@ def read_json(split):
     """
     selected_scans = set()
     if split == 'train' :
-        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/train_scans.txt'))
-        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/hkh7710/sy/vlsat/data/3DSSG_subset/train_scans.txt'))
+        with open("/data/hkh7710/sy/vlsat/data/3DSSG_subset/relationships_train.json", "r") as read_file:
             data = json.load(read_file)
     elif split == 'val':
-        selected_scans = selected_scans.union(read_txt_to_list('/data/spoiuy3/vlsat/data/3DSSG_subset/validation_scans.txt'))
-        with open("/data/spoiuy3/vlsat/data/3DSSG_subset/relationships_validation.json", "r") as read_file:
+        selected_scans = selected_scans.union(read_txt_to_list('/data/hkh7710/sy/vlsat/data/3DSSG_subset/validation_scans.txt'))
+        with open("/data/hkh7710/sy/vlsat/data/3DSSG_subset/relationships_validation.json", "r") as read_file:
             data = json.load(read_file)
     else:
         raise RuntimeError('unknown split type:',split)
@@ -78,15 +78,15 @@ def get_zero_shot_recall(triplet_rank, cls_matrix, obj_names, rel_name):
 
 if __name__ == '__main__':
 
-    with open('/data/spoiuy3/vlsat/data/3DSSG_subset/classes.txt') as f:
+    with open('/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt') as f:
         obj_names = f.read().splitlines()
-    with open('/data/spoiuy3/vlsat/data/3DSSG_subset/relationships.txt') as f:
+    with open('/data/hkh7710/sy/vlsat/data/3DSSG_subset/relationships.txt') as f:
         rel_name = f.read().splitlines()
     rel_name.pop(0)
-    a = np.load('/data/spoiuy3/vlsat/config/results/Mmgnet/fill_mimic_ca/cls_matrix_list.npy')
-    aa = np.load('/data/spoiuy3/vlsat/config/results/Mmgnet/fill_baseline_obj512/cls_matrix_list.npy')
-    b = np.load('/data/spoiuy3/vlsat/config/results/Mmgnet/fill_mimic_ca/topk_triplet_list.npy')
-    bb = np.load('/data/spoiuy3/vlsat/config/results/Mmgnet/fill_baseline_obj512/topk_triplet_list.npy')
+    a = np.load('/data/hkh7710/sy/vlsat/config/results/Mmgnet/fill_mimic_ca/cls_matrix_list.npy')
+    aa = np.load('/data/hkh7710/sy/vlsat/config/results/Mmgnet/fill_baseline_obj512/cls_matrix_list.npy')
+    b = np.load('/data/hkh7710/sy/vlsat/config/results/Mmgnet/fill_mimic_ca/topk_triplet_list.npy')
+    bb = np.load('/data/hkh7710/sy/vlsat/config/results/Mmgnet/fill_baseline_obj512/topk_triplet_list.npy')
     res = get_zero_shot_recall(b, a, obj_names, rel_name)
     import ipdb; ipdb.set_trace()
 
