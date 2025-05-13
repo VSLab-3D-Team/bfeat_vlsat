@@ -287,7 +287,7 @@ class Mmgnet(BaseModel):
             x_i_feats, x_j_feats = self.index_get(obj_feature, edge_indices)
         rel_feature_3d = self.rel_encoder_3d(x_i_feats, x_j_feats, edge_feature.squeeze(-1))
 
-        obj_center = None #descriptor[:, :3].clone()
+        obj_center = descriptor[:, :3].clone()
         #obj_center = torch.randn_like(obj_feature[:, :3]).cuda()
         gcn_obj_feature_3d, gcn_edge_feature_3d \
             = self.mmg(obj_feature, rel_feature_3d, edge_indices, batch_ids, obj_center, istrain=istrain)
@@ -398,7 +398,7 @@ class Mmgnet(BaseModel):
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) + rel_diff
+        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) # + rel_diff
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
