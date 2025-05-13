@@ -60,8 +60,8 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
                 reverse_idx = edge_dict[(dst, src)]
                 reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        gates = self.edge_gate(edge_feature)
-        reverse_edge_feature = gates * reverse_edge_feature
+        #gates = self.edge_gate(edge_feature)
+        #reverse_edge_feature = gates * reverse_edge_feature
         
         xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
