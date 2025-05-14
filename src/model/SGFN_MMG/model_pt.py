@@ -297,7 +297,7 @@ class Mmgnet(BaseModel):
             x_i_feats, x_j_feats = self.index_get(obj_feature, edge_indices)
         rel_feature_3d = self.rel_encoder_3d(x_i_feats, x_j_feats, edge_feature.squeeze(-1))
 
-        obj_center = descriptor[:, :3].clone()
+        obj_center = None #descriptor[:, :3].clone()
         #obj_center = torch.randn_like(obj_feature[:, :3]).cuda()
         gcn_obj_feature_3d, gcn_edge_feature_3d \
             = self.mmg(obj_feature, rel_feature_3d, edge_indices, batch_ids, obj_center, istrain=istrain)
