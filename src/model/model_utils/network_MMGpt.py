@@ -371,7 +371,7 @@ class MMG_pt_single(torch.nn.Module):
                 count += len(idx_i)
         else:
             obj_mask = None
-            obj_distance_weight = None
+            obj_distance = None
             attention_matrix_way = 'mul'
         
         for i in range(self.depth):
