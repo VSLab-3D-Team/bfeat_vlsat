@@ -85,6 +85,7 @@ def load_config():
     
     config.LOADBEST = args.loadbest
     config.MODE = args.mode
+    config.exp = args.exp
     '''
     if args.exp:
         config.exp = f"{timestamp}_{args.exp}"
