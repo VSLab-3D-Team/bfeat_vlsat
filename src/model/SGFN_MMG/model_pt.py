@@ -59,20 +59,20 @@ class Mmgnet(BaseModel):
         self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
         self.obj_encoder = self.obj_encoder.eval()
         
-        # self.rel_encoder_3d = RelFeatNaiveExtractor(
-        #     dim_point_feature,
-        #     dim_descriptor,
-        #     dim_edge_feature,
-        #     num_layers=8
-        # ) #.to("cuda")
+        self.rel_encoder_3d = RelFeatNaiveExtractor(
+             dim_point_feature,
+             dim_descriptor,
+             dim_edge_feature,
+             num_layers=8
+        ) #.to("cuda")
 
-        self.rel_encoder_3d = GeocentricRelationEncoder(
-            input_dim=dim_point_feature,
-            geo_dim=dim_descriptor,
-            hidden_dim=256,
-            geo_factor=4,
-            num_layers=2
-        )
+        #self.rel_encoder_3d = GeocentricRelationEncoder(
+        #    input_dim=dim_point_feature,
+        #    geo_dim=dim_descriptor,
+        #    hidden_dim=256,
+        #    geo_factor=4,
+        #    num_layers=2
+        #)
 
         # self.rel_encoder_3d = PointNetfeat(
         #     global_feat=True,
@@ -408,7 +408,7 @@ class Mmgnet(BaseModel):
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) # + rel_diff
+        loss = lambda_o * (loss_obj_3d) + 3 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) + rel_diff
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
