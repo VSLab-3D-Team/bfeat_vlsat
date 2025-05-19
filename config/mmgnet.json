@@ -57,8 +57,8 @@
     "NUM_HEADS": 8,
     "use_pretrain":"",
     "use_descriptor": true,
-    "obj_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/classes.txt",
-    "rel_label_path":"/data/hkh7710/sy/vlsat/data/3DSSG_subset/relations.txt",
+    "obj_label_path":"/data/spoiuy3/vlsat/data/3DSSG_subset/classes.txt",
+    "rel_label_path":"/data/spoiuy3/vlsat/data/3DSSG_subset/relations.txt",
     "adapter_path":"/home/michael/Michael/robotics/SceneGraph/CVPR2023-VLSAT/clip_adapter/checkpoint/origin_mean.pth"
   },
   "dataset": {
