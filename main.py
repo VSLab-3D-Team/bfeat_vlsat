@@ -70,7 +70,7 @@ def load_config():
     if not os.path.exists(config_path):
         raise RuntimeError('Target config file does not exist. {}'.format(config_path))
     
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    #timestamp = time.strftime("%Y%m%d_%H%M%S")
     
     config = Config(config_path)
     
@@ -85,11 +85,11 @@ def load_config():
     
     config.LOADBEST = args.loadbest
     config.MODE = args.mode
-    
+    '''
     if args.exp:
         config.exp = f"{timestamp}_{args.exp}"
     else:
-        config.exp = timestamp
+        config.exp = timestamp '''
     
     print(f"exp name: {config.exp}")
     
