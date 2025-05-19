@@ -331,3 +331,46 @@ def get_zero_shot_recall(triplet_rank, cls_matrix, obj_names, rel_name):
     return (zero_shot_50, zero_shot_100), (non_zero_shot_50, non_zero_shot_100), (all_50, all_100)
 
     
+def get_head_body_tail(cls_matrix_list, topk_pred_list, relation_names):
+    def cal_mA(cls_dict):
+        predicate_mean_1, predicate_mean_3, predicate_mean_5 = [], [], []
+        for i in cls_dict.keys():
+            l = len(cls_dict[i])
+            if l > 0:
+                m_1 = (np.array(cls_dict[i]) <= 1).sum() / len(cls_dict[i])  # 
+                m_3 = (np.array(cls_dict[i]) <= 3).sum() / len(cls_dict[i])
+                m_5 = (np.array(cls_dict[i]) <= 5).sum() / len(cls_dict[i])
+                predicate_mean_1.append(m_1)
+                predicate_mean_3.append(m_3)
+                predicate_mean_5.append(m_5) 
+           
+        predicate_mean_1 = np.mean(predicate_mean_1) if len(predicate_mean_1)>0 else 0.0
+        predicate_mean_3 = np.mean(predicate_mean_3) if len(predicate_mean_3)>0 else 0.0
+        predicate_mean_5 = np.mean(predicate_mean_5) if len(predicate_mean_5)>0 else 0.0
+        return [predicate_mean_1 * 100, predicate_mean_3 * 100, predicate_mean_5 * 100]
+    
+    head_relation = ["left", "right", "front", "behind", "close by", "same as", "attached to", "standing on"]
+    body_relation = ["bigger than", "smaller than", "higher than", "lower than", "lying on", "hanging on"]
+    tail_relation = ["supported by", "inside", "same symmetry as", "connected to", "leaning against", "part of", "belonging to", "build in", "standing in", "cover", "lying in", "hanging in"]
+
+    head_relation = [relation_names.index(i) for i in head_relation if i in relation_names]
+    body_relation = [relation_names.index(i) for i in body_relation if i in relation_names]
+    tail_relation = [relation_names.index(i) for i in tail_relation if i in relation_names]
+
+    head_cls_dict = {i:[] for i in head_relation}
+    body_cls_dict = {i:[] for i in body_relation}
+    tail_cls_dict = {i:[] for i in tail_relation}
+
+        
+    for idx, j in enumerate(cls_matrix_list):
+        if j[-1] in head_cls_dict.keys():
+            head_cls_dict[j[-1]].append(topk_pred_list[idx])
+        if j[-1] in body_cls_dict.keys():
+            body_cls_dict[j[-1]].append(topk_pred_list[idx])
+        if j[-1] in tail_cls_dict.keys():
+            tail_cls_dict[j[-1]].append(topk_pred_list[idx])
+    
+    head_mA = cal_mA(head_cls_dict)
+    body_mA = cal_mA(body_cls_dict)
+    tail_mA = cal_mA(tail_cls_dict)
+    return head_mA, body_mA, tail_mA

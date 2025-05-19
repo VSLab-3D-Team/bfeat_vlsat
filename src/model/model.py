@@ -13,7 +13,7 @@ from src.dataset.dataset_builder import build_dataset
 # from src.model.SGFN_MMG.model_single import Mmgnet
 from src.model.SGFN_MMG.model_pt import Mmgnet
 from src.utils import op_utils
-from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
+from src.utils.eva_utils_acc import *
 from src.utils.eval_utils_recall import *
 
 import wandb
@@ -287,6 +287,8 @@ class MMGNet():
         mean_recall = get_mean_recall(topk_triplet_list, cls_matrix_list)
         mean_recall_2d = get_mean_recall(topk_triplet_2d_list, cls_matrix_list)
         zero_shot_recall, non_zero_shot_recall, all_zero_shot_recall = get_zero_shot_recall(topk_triplet_list, cls_matrix_list, self.dataset_valid.classNames, self.dataset_valid.relationNames)
+        rel_head_mean, rel_body_mean, rel_tail_mean = get_head_body_tail(cls_matrix_list, topk_rel_list, self.dataset_valid.relationNames) 
+        
         
         if self.model.config.EVAL:
             save_path = os.path.join(self.config.PATH, "results", self.model_name, self.exp)
@@ -388,6 +390,16 @@ class MMGNet():
         print(f"Eval: non-zero-shot recall@100: {non_zero_shot_recall[1]}", file=f_in)
         print(f"Eval: all-zero-shot recall@50 : {all_zero_shot_recall[0]}", file=f_in)
         print(f"Eval: all-zero-shot recall@100: {all_zero_shot_recall[1]}", file=f_in)
+        print("--------------------------------------------------", file=f_in)
+        print(f"Eval: 3d head mean Acc@1: {rel_head_mean[0]}", file=f_in)
+        print(f"Eval: 3d head mean Acc@3: {rel_head_mean[1]}", file=f_in)
+        print(f"Eval: 3d head mean Acc@5: {rel_head_mean[2]}", file=f_in)
+        print(f"Eval: 3d body mean Acc@1: {rel_body_mean[0]}", file=f_in)
+        print(f"Eval: 3d body mean Acc@3: {rel_body_mean[1]}", file=f_in)
+        print(f"Eval: 3d body mean Acc@5: {rel_body_mean[2]}", file=f_in)
+        print(f"Eval: 3d tail mean Acc@1: {rel_tail_mean[0]}", file=f_in)
+        print(f"Eval: 3d tail mean Acc@3: {rel_tail_mean[1]}", file=f_in)
+        print(f"Eval: 3d tail mean Acc@5: {rel_tail_mean[2]}", file=f_in)
         
         
         if self.model.config.EVAL:
