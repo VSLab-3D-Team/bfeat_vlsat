@@ -146,15 +146,23 @@ class MMGNet():
 
             print('\n\nTraining epoch: %d' % self.model.epoch)
             
+            cls_matrix_list, topk_rel_list = [], np.array([])
+            
             for items in loader:
                 self.model.train()
                 
                 ''' get data '''
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
-                logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
+                logs, top_k_rel, cls_matrix = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
                                                 weights_obj=self.dataset_train.w_cls_obj, 
                                                 weights_rel=self.dataset_train.w_cls_rel,
                                                 ignore_none_rel = False)
+                
+                
+                if cls_matrix is not None:
+                    cls_matrix_list.extend(cls_matrix)
+                topk_rel_list = np.concatenate((topk_rel_list, top_k_rel))
+                
                 
                 iteration = self.model.iteration
                 logs += [
@@ -173,6 +181,9 @@ class MMGNet():
             progbar = op_utils.Progbar(self.total, width=20, stateful_metrics=['Misc/epo', 'Misc/it'])
             loader = iter(train_loader)
             self.save()
+            
+            cls_matrix_list = np.stack(cls_matrix_list)
+            compute_predicate_acc_per_class(cls_matrix_list, topk_rel_list, self.dataset_train.relationNames, self.model.epoch)
 
             if (self.model.epoch < 30):
                 val_interval = 10
@@ -291,9 +302,7 @@ class MMGNet():
         mean_recall_2d = get_mean_recall(topk_triplet_2d_list, cls_matrix_list)
         zero_shot_recall, non_zero_shot_recall, all_zero_shot_recall = get_zero_shot_recall(topk_triplet_list, cls_matrix_list, self.dataset_valid.classNames, self.dataset_valid.relationNames)
         rel_head_mean, rel_body_mean, rel_tail_mean = get_head_body_tail(cls_matrix_list, topk_rel_list, self.dataset_valid.relationNames) 
-        per_rels = get_per_rel_class(cls_matrix_list, topk_rel_list,  self.dataset_valid.relationNames)
-        per_objs = get_per_obj_class(gt_obj_list, topk_obj_list, self.dataset_valid.classNames)
-        
+        per_rels = get_per_rel_class(cls_matrix_list, topk_rel_list,  self.dataset_valid.relationNames)        
         
         if self.model.config.EVAL:
             save_path = os.path.join(self.config.PATH, "results", self.model_name, self.exp)
@@ -409,10 +418,6 @@ class MMGNet():
         print(self.dataset_valid.relationNames)
         print()
         print(per_rels)
-        print("--------------------------------------------------", file=f_in)
-        print(self.dataset_valid.classNames)
-        print()
-        print(per_objs)
         
         
         if self.model.config.EVAL:
