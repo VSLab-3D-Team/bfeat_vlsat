@@ -159,9 +159,10 @@ class MMGNet():
                                                 ignore_none_rel = False)
                 
                 
-                if cls_matrix is not None:
-                    cls_matrix_list.extend(cls_matrix)
-                topk_rel_list = np.concatenate((topk_rel_list, top_k_rel))
+                if self.model.epoch >= 30: 
+                    if cls_matrix is not None:
+                        cls_matrix_list.extend(cls_matrix)
+                    topk_rel_list = np.concatenate((topk_rel_list, top_k_rel))
                 
                 
                 iteration = self.model.iteration
@@ -182,8 +183,9 @@ class MMGNet():
             loader = iter(train_loader)
             self.save()
             
-            cls_matrix_list = np.stack(cls_matrix_list)
-            compute_predicate_acc_per_class(cls_matrix_list, topk_rel_list, self.dataset_train.relationNames, self.model.epoch)
+            if self.model.epoch >= 30: 
+                cls_matrix_list = np.stack(cls_matrix_list)
+                compute_predicate_acc_per_class(cls_matrix_list, topk_rel_list, self.dataset_train.relationNames, self.model.epoch)
 
             if (self.model.epoch < 30):
                 val_interval = 10
