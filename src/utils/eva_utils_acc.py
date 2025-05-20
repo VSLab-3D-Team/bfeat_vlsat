@@ -374,3 +374,53 @@ def get_head_body_tail(cls_matrix_list, topk_pred_list, relation_names):
     body_mA = cal_mA(body_cls_dict)
     tail_mA = cal_mA(tail_cls_dict)
     return head_mA, body_mA, tail_mA
+
+def get_per_rel_class(cls_matrix_list, topk_pred_list, relation_names):
+    def cal_R(cls_dict):
+        result = {}
+        for i in cls_dict:
+            if len(cls_dict[i]) > 0:
+                preds = np.array(cls_dict[i])
+                r1 = (preds <= 1).sum() / len(preds)
+                r3 = (preds <= 3).sum() / len(preds)
+                r5 = (preds <= 5).sum() / len(preds)
+                result[i] = [r1 * 100, r3 * 100, r5 * 100]
+            else:
+                result[i] = [0.0, 0.0, 0.0]
+        return result
+
+    num_relations = len(relation_names)
+    cls_dict = {i: [] for i in range(num_relations)}
+
+    for idx, row in enumerate(cls_matrix_list):
+        true_label = row[-1]
+        if true_label in cls_dict:
+            cls_dict[true_label].append(topk_pred_list[idx])
+
+    label_wise_recall = cal_R(cls_dict)
+    return label_wise_recall
+
+def get_per_obj_class(gt_obj_label, topk_obj_list, object_names):
+    def cal_R(cls_dict):
+        result = {}
+        for i in cls_dict:
+            if len(cls_dict[i]) > 0:
+                objs = np.array(cls_dict[i])
+                r1 = (objs <= 1).sum() / len(objs)
+                r3 = (objs <= 3).sum() / len(objs)
+                r5 = (objs <= 5).sum() / len(objs)
+                result[i] = [r1 * 100, r3 * 100, r5 * 100]
+            else:
+                result[i] = [0.0, 0.0, 0.0]
+        return result
+
+    num_relations = len(object_names)
+    cls_dict = {i: [] for i in range(num_relations)}
+
+    for idx, row in enumerate(gt_obj_label):
+        true_label = row
+        if true_label in cls_dict:
+            cls_dict[true_label].append(topk_obj_list[idx])
+
+    label_wise_recall = cal_R(cls_dict)
+    return label_wise_recall
