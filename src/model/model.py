@@ -153,7 +153,7 @@ class MMGNet():
                 
                 ''' get data '''
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
-                logs, top_k_rel, cls_matrix = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
+                logs, top_k_rel, cls_matrix = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, self.model.epoch, batch_ids, with_log=True,
                                                 weights_obj=self.dataset_train.w_cls_obj, 
                                                 weights_rel=self.dataset_train.w_cls_rel,
                                                 ignore_none_rel = False)

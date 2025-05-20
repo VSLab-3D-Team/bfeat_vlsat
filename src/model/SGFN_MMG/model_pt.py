@@ -311,7 +311,7 @@ class Mmgnet(BaseModel):
         else:
             return obj_logits_3d, rel_cls_3d
 
-    def process_train(self, obj_points, obj_2d_feats, gt_cls, descriptor, gt_rel_cls, edge_indices, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
+    def process_train(self, obj_points, obj_2d_feats, gt_cls, descriptor, gt_rel_cls, edge_indices, epoch, batch_ids=None, with_log=False, ignore_none_rel=False, weights_obj=None, weights_rel=None):
         self.iteration +=1    
         obj_logits_3d, rel_cls_3d, edge_feature_3d, obj_logit_scale, rel_diff = \
             self(obj_points, edge_indices.t().contiguous(), descriptor, batch_ids, istrain=True)
@@ -408,7 +408,9 @@ class Mmgnet(BaseModel):
         top_k_rel = evaluate_topk_predicate(rel_cls_3d.detach(), gt_edges, self.mconfig.multi_rel_outputs, topk=6)
         obj_topk_list = [100 * (top_k_obj <= i).sum() / len(top_k_obj) for i in [1, 5, 10]]
         rel_topk_list = [100 * (top_k_rel <= i).sum() / len(top_k_rel) for i in [1, 3, 5]]
-        top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
+        cls_matrix = None
+        if epoch >= 30: 
+            top_k_triplet, cls_matrix, sub_scores, obj_scores, rel_scores = evaluate_triplet_topk(obj_logits_3d.detach().cpu(), rel_cls_3d.detach().cpu(), gt_edges, edge_indices, self.mconfig.multi_rel_outputs, topk=101, use_clip=True, obj_topk=top_k_obj)
         
         
         log = [("train/rel_loss", loss_rel_3d.detach().item()),
