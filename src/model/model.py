@@ -230,7 +230,6 @@ class MMGNet():
         sub_scores_list, obj_scores_list, rel_scores_list = [], [], []
         topk_obj_2d_list, topk_rel_2d_list, topk_triplet_2d_list = np.array([]), np.array([]), np.array([])
         
-        n = 0
 
         for i, items in enumerate(val_loader, 0):
             ''' get data '''
@@ -282,9 +281,6 @@ class MMGNet():
                     ("Acc@100/triplet_2d", (topk_triplet_2d_list <= 100).sum() * 100 / len(topk_triplet_2d_list)),]
 
             progbar.add(1, values=logs if self.config.VERBOSE else [x for x in logs if not x[0].startswith('Loss')])
-            n+=1
-            if (n == 10):
-                break
 
 
         cls_matrix_list = np.stack(cls_matrix_list)
@@ -410,8 +406,12 @@ class MMGNet():
         print(f"Eval: 3d tail mean Acc@3: {rel_tail_mean[1]}", file=f_in)
         print(f"Eval: 3d tail mean Acc@5: {rel_tail_mean[2]}", file=f_in)
         print("--------------------------------------------------", file=f_in)
+        print(self.dataset_valid.relationNames)
+        print()
         print(per_rels)
         print("--------------------------------------------------", file=f_in)
+        print(self.dataset_valid.classNames)
+        print()
         print(per_objs)
         
         
