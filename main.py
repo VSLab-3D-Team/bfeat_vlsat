@@ -10,7 +10,6 @@ from src.utils.config import Config
 from utils import util
 import torch
 import argparse
-import time
 
 def main():
     config = load_config()
@@ -69,9 +68,7 @@ def load_config():
 
     if not os.path.exists(config_path):
         raise RuntimeError('Target config file does not exist. {}'.format(config_path))
-    
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    
+        
     config = Config(config_path)
     
     if 'NAME' not in config:
@@ -85,11 +82,8 @@ def load_config():
     
     config.LOADBEST = args.loadbest
     config.MODE = args.mode
+    config.exp = args.exp
     
-    if args.exp:
-        config.exp = f"{timestamp}_{args.exp}"
-    else:
-        config.exp = timestamp
     
     print(f"exp name: {config.exp}")
     

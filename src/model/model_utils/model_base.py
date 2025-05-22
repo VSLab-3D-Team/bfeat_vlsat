@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import collections
 from pathlib import Path
-import time
 
 class BaseModel(nn.Module):
     def __init__(self, name, config):
@@ -25,9 +24,7 @@ class BaseModel(nn.Module):
     def saveConfig(self, path):
         torch.save({
             'iteration': self.iteration,
-            'epoch': self.epoch,
-            'eva_res': self.eva_res,
-            'timestamp': time.strftime("%Y%m%d_%H%M%S")
+            'eva_res' : self.eva_res
         }, path)
         
     def loadConfig(self, path):
@@ -42,11 +39,6 @@ class BaseModel(nn.Module):
             except:
                 print('Target saving config file does not contain eva_res!')
                 eva_res = 0
-            
-            try:
-                self.epoch = data.get('epoch', 0)
-            except:
-                self.epoch = 0
                 
             return data['iteration'], eva_res
         else:
@@ -54,117 +46,86 @@ class BaseModel(nn.Module):
         
     def save(self):
         print('\nSaving %s...' % self.name)
-        
-        current_epoch = getattr(self, 'epoch', 0)
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        unique_suffix = f"_epoch{current_epoch}_{timestamp}"
-        
-        performance_info = f"_IoU{self.eva_res:.4f}"
-        save_suffix = unique_suffix + performance_info
-        
-        is_best = False
+
         if not os.path.exists(self.config_path+self.best_suffix):
-            print('No previous best model found. This will be marked as the best.\n')
-            is_best = True
+            print('No previous best model found. Saving this as the best.\n')
+            suffix = self.best_suffix
         else:
             print('Found the previous best model.')
-            _, prev_best_eva_res = self.loadConfig(self.config_path+self.best_suffix)
-            print('current v.s. previous best: {:1.4f} v.s. {:1.4f}'.format(self.eva_res, prev_best_eva_res))
-            if self.eva_res > prev_best_eva_res:
-                print('Current IoU is better. This will be marked as the new best.\n')
-                is_best = True
+            _, eva_res = self.loadConfig(self.config_path+self.best_suffix)
+            print('current v.s. previous: {:1.3f} {:1.3f}'.format(self.eva_res, eva_res))
+            if self.eva_res > eva_res:
+                print('Current IoU is better. Update best model.\n')
+                suffix = self.best_suffix
             else:
-                print('Previous best IoU is still better.\n')
-        
-        self.saveConfig(self.config_path + save_suffix)
-        
-        for name, model in self._modules.items():
+                print('Previous IoU is better, save this one as checkpoint.\n')
+                suffix = self.suffix
+                
+        self.saveConfig(self.config_path + suffix)
+        for name,model in self._modules.items():
             skip = False
             for k in self.skip_names:
                 if name.find(k) != -1:
                     skip = True
             if skip is False:
-                self.saveWeights(model, os.path.join(self.saving_pth, name + save_suffix))
-        
-        torch.save({'optimizer': self.optimizer.state_dict()}, 
-                os.path.join(self.saving_pth, 'optimizer' + save_suffix))
-        torch.save({'lr_scheduler': self.lr_scheduler.state_dict()}, 
-                os.path.join(self.saving_pth, 'lr_scheduler' + save_suffix))
-        
-        if is_best:
-            best_marker_suffix = save_suffix + "_best"
-            self.saveConfig(self.config_path + best_marker_suffix)
-            
-            with open(os.path.join(self.saving_pth, 'best_model_info.txt'), 'a') as f:
-                f.write(f"Date: {timestamp}, Epoch: {current_epoch}, IoU: {self.eva_res:.4f}, Suffix: {save_suffix}\n")
+                self.saveWeights(model, os.path.join(self.saving_pth, name + suffix))
+        torch.save({'optimizer': self.optimizer.state_dict()}, os.path.join(self.saving_pth,'optimizer'+suffix))
+        torch.save({'lr_scheduler':self.lr_scheduler.state_dict()}, os.path.join(self.saving_pth,'lr_scheduler'+suffix))
                 
     def load(self, best=False):
         print('\nLoading %s model...' % self.name)
-        loaded = True
-        
-        best_model_info_path = os.path.join(self.saving_pth, 'best_model_info.txt')
-        
-        config_files = [f for f in os.listdir(self.saving_pth) if f.startswith('config_epoch') and f.endswith('.pth')]
-        
-        if not config_files:
-            print('\tNo saved models found')
-            return False
+        loaded=True
         
         if best:
-            if os.path.exists(best_model_info_path):
-                with open(best_model_info_path, 'r') as f:
-                    lines = f.readlines()
-                    if lines:
-                        last_best_line = lines[-1]
-                        suffix_info = last_best_line.strip().split('Suffix: ')[-1]
-                        print(f'\tLoading best model with suffix: {suffix_info}')
-                        config_path = self.config_path + suffix_info
-                    else:
-                        print('\tBest model info file exists but is empty, loading latest model instead')
-                        best = False
+            suffix = self.best_suffix
+        else:
+            if os.path.exists(self.config_path+self.best_suffix) and best:
+                print('\tTrying to load the best model')
+                suffix = self.best_suffix
+            elif not os.path.exists(self.config_path+self.suffix) and os.path.exists(self.config_path+self.best_suffix):
+                print('\tNo checkpoints, but has saved best model. Load the best model')
+                suffix = self.best_suffix
+            elif os.path.exists(self.config_path+self.suffix) and os.path.exists(self.config_path+self.best_suffix):
+                print('\tFound checkpoint model and the best model. Comparing itertaion')
+                iteration, _= self.loadConfig(self.config_path + self.suffix)
+                iteration_best, _= self.loadConfig(self.config_path + self.best_suffix)
+                if iteration > iteration_best:
+                    print('\tcheckpoint has larger iteration value. Load checkpoint')
+                    suffix = self.suffix
+                else:
+                    print('\tthe best model has larger iteration value. Load the best model')
+                    suffix = self.best_suffix
+            elif os.path.exists(self.config_path+self.suffix):
+                print('\tLoad checkpoint')
+                suffix = self.suffix
             else:
-                print('\tNo best model info found, loading latest model instead')
-                best = False
-        
-        if not best:
-            config_files.sort(key=lambda x: (
-                int(x.split('_epoch')[1].split('_')[0]),  
-                x.split('_epoch')[1].split('_')[1]       
-            ), reverse=True)
-            
-            latest_config = config_files[0]
-            suffix_info = latest_config.replace('config', '')
-            print(f'\tLoading latest model: {latest_config}')
-            config_path = self.config_path + suffix_info
-        
-        self.iteration, self.eva_res = self.loadConfig(config_path)
-        print(f'\tLoaded model from iteration {self.iteration} with evaluation result {self.eva_res:.4f}')
-        
-        for name, model in self._modules.items():
+                print('\tNo saved model found')
+                return False
+
+        self.iteration, self.eva_res = self.loadConfig(self.config_path + suffix)
+        for name,model in self._modules.items():
             skip = False
             for k in self.skip_names:
                 if name.find(k) != -1:
                     skip = True
             if skip is False:
-                model_path = os.path.join(self.saving_pth, name + suffix_info)
-                loaded &= self.loadWeights(model, model_path)
+                #import ipdb; ipdb.set_trace()
+                loaded &= self.loadWeights(model, os.path.join(self.saving_pth, name + suffix))
         
-        optimizer_path = os.path.join(self.saving_pth, 'optimizer' + suffix_info)
-        if os.path.exists(optimizer_path):
-            data = torch.load(optimizer_path)
+        if os.path.exists(os.path.join(self.saving_pth,'optimizer'+suffix)):
+            data = torch.load(os.path.join(self.saving_pth,'optimizer'+suffix))
             self.optimizer.load_state_dict(data['optimizer'])
-            print(f'\tResumed optimizer from {suffix_info}', flush=True)
+            print(f'resume optimizer from {suffix}', flush=True)
         
-        scheduler_path = os.path.join(self.saving_pth, 'lr_scheduler' + suffix_info)
-        if os.path.exists(scheduler_path):
-            data = torch.load(scheduler_path)
+        if os.path.exists(os.path.join(self.saving_pth,'lr_scheduler'+suffix)):
+            data = torch.load(os.path.join(self.saving_pth,'lr_scheduler'+suffix))
             self.lr_scheduler.load_state_dict(data['lr_scheduler'])
-            print(f"\tResumed lr scheduler from {suffix_info}", flush=True)
-        
+            print(f"resume lr scehduler from {suffix}", flush=True)
+            
         if loaded:
-            print('\tModel loaded successfully!\n')
+            print('\tmodel loaded!\n')
         else:
-            print('\tModel loading failed!\n')
+            print('\tmodel loading failed!\n')
         return loaded
        
     def load_pretrain_model(self, path, skip_names=["predictor"], is_freeze=True):    
