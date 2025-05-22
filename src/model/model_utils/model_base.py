@@ -110,6 +110,7 @@ class BaseModel(nn.Module):
                     skip = True
             if skip is False:
                 #import ipdb; ipdb.set_trace()
+                print("name: ", name)
                 loaded &= self.loadWeights(model, os.path.join(self.saving_pth, name + suffix))
         
         if os.path.exists(os.path.join(self.saving_pth,'optimizer'+suffix)):
