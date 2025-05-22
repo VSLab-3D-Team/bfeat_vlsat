@@ -76,6 +76,7 @@ class BaseModel(nn.Module):
         print('\nLoading %s model...' % self.name)
         loaded=True
         
+        print("config_path: ", self.config_path)
         if best:
             suffix = self.best_suffix
         else:
