@@ -106,12 +106,12 @@ class BaseModel(nn.Module):
         self.iteration, self.eva_res = self.loadConfig(self.config_path + suffix)
         for name,model in self._modules.items():
             skip = False
+            print("skip: ", self.skip_names)
             for k in self.skip_names:
                 if name.find(k) != -1:
                     skip = True
             if skip is False:
                 #import ipdb; ipdb.set_trace()
-                print("model: ", model)
                 print("name: ", name)
                 loaded &= self.loadWeights(model, os.path.join(self.saving_pth, name + suffix))
         
