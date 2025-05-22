@@ -16,8 +16,6 @@ from src.utils import op_utils
 from src.utils.eva_utils_acc import *
 from src.utils.eval_utils_recall import *
 
-import wandb
-
 class MMGNet():
     def __init__(self, config):
         self.config = config
@@ -27,26 +25,6 @@ class MMGNet():
         self.save_res = config.EVAL
         self.update_2d = config.update_2d
 
-        if not self.config.EVAL and config.MODE == 'train':
-            try:
-                if wandb.run is None:
-                    wandb.init(
-                        project="3DSSG_VL-SAT",
-                        entity="kimh060612-kyung-hee-university",
-                        name=self.exp,
-                        config={
-                            "model_name": self.model_name,
-                            "batch_size": self.config.Batch_Size,
-                            "learning_rate": self.config.LR,
-                            "max_epochs": self.config.MAX_EPOCHES,
-                            "use_rgb": mconfig.USE_RGB,
-                            "use_normal": mconfig.USE_NORMAL,
-                            "multi_rel_outputs": mconfig.multi_rel_outputs,
-                            "device": str(config.DEVICE),
-                        }
-                    )
-            except Exception as e:
-                print(f"Error during wandb logging: {e}")
         
         ''' Build dataset '''
         dataset = None
@@ -118,7 +96,7 @@ class MMGNet():
             collate_fn=collate_fn_mmg,
         )
         
-        self.model.epoch = 50
+        self.model.epoch = 1
         keep_training = True
         
         if self.total == 1:
@@ -145,26 +123,17 @@ class MMGNet():
                 break
 
             print('\n\nTraining epoch: %d' % self.model.epoch)
-            
-            cls_matrix_list, topk_rel_list = [], np.array([])
-            
+                        
             for items in loader:
                 self.model.train()
                 
                 ''' get data '''
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
-                logs, top_k_rel, cls_matrix = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, self.model.epoch, batch_ids, with_log=True,
+                logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
                                                 weights_obj=self.dataset_train.w_cls_obj, 
                                                 weights_rel=self.dataset_train.w_cls_rel,
                                                 ignore_none_rel = False)
-                
-                
-                if self.model.epoch >= 30: 
-                    if cls_matrix is not None:
-                        cls_matrix_list.extend(cls_matrix)
-                    topk_rel_list = np.concatenate((topk_rel_list, top_k_rel))
-                
-                
+
                 iteration = self.model.iteration
                 logs += [
                     ("Misc/epo", int(self.model.epoch)),
@@ -182,10 +151,6 @@ class MMGNet():
             progbar = op_utils.Progbar(self.total, width=20, stateful_metrics=['Misc/epo', 'Misc/it'])
             loader = iter(train_loader)
             self.save()
-            
-            if self.model.epoch >= 30: 
-                cls_matrix_list = np.stack(cls_matrix_list)
-                compute_predicate_acc_per_class(cls_matrix_list, topk_rel_list, self.dataset_train.relationNames, self.model.epoch)
 
             if (self.model.epoch < 30):
                 val_interval = 10
@@ -303,8 +268,7 @@ class MMGNet():
         mean_recall = get_mean_recall(topk_triplet_list, cls_matrix_list)
         mean_recall_2d = get_mean_recall(topk_triplet_2d_list, cls_matrix_list)
         zero_shot_recall, non_zero_shot_recall, all_zero_shot_recall = get_zero_shot_recall(topk_triplet_list, cls_matrix_list, self.dataset_valid.classNames, self.dataset_valid.relationNames)
-        rel_head_mean, rel_body_mean, rel_tail_mean = get_head_body_tail(cls_matrix_list, topk_rel_list, self.dataset_valid.relationNames) 
-        per_rels = get_per_rel_class(cls_matrix_list, topk_rel_list,  self.dataset_valid.relationNames)        
+        rel_head_mean, rel_body_mean, rel_tail_mean = get_head_body_tail(cls_matrix_list, topk_rel_list, self.dataset_valid.relationNames)   
         
         if self.model.config.EVAL:
             save_path = os.path.join(self.config.PATH, "results", self.model_name, self.exp)
@@ -416,10 +380,6 @@ class MMGNet():
         print(f"Eval: 3d tail mean Acc@1: {rel_tail_mean[0]}", file=f_in)
         print(f"Eval: 3d tail mean Acc@3: {rel_tail_mean[1]}", file=f_in)
         print(f"Eval: 3d tail mean Acc@5: {rel_tail_mean[2]}", file=f_in)
-        print("--------------------------------------------------", file=f_in)
-        print(self.dataset_valid.relationNames)
-        print()
-        print(per_rels)
         
         
         if self.model.config.EVAL:
@@ -473,78 +433,6 @@ class MMGNet():
                 ("all_zero_shot_recall@100", all_zero_shot_recall[1])
                 ]
         
-        if not self.config.EVAL:
-            try:
-                if wandb.run is None:
-                    wandb.init(project=f"MMGNet-{self.model_name}", name=self.exp)
-                    
-                wandb_eval_logs = {
-                    "val/Recall@1_obj": obj_acc_1,
-                    "val/Recall@5_obj": obj_acc_5,
-                    "val/Recall@10_obj": obj_acc_10,
-                    "val/Recall@1_pred": rel_acc_1,
-                    "val/Recall@3_pred": rel_acc_3,
-                    "val/Recall@5_pred": rel_acc_5,
-                    "val/Recall@50_triplet": triplet_acc_50,
-                    "val/Recall@100_triplet": triplet_acc_100,
-                    "val/mRecall@1_obj": obj_acc_mean_1,
-                    "val/mRecall@5_obj": obj_acc_mean_5,
-                    "val/mRecall@10_obj": obj_acc_mean_10,
-                    "val/mRecall@1_pred": rel_acc_mean_1,
-                    "val/mRecall@3_pred": rel_acc_mean_3,
-                    "val/mRecall@5_pred": rel_acc_mean_5,
-                    "val/mRecall@50_triplet": mean_recall[0],
-                    "val/mRecall@100_triplet": mean_recall[1],
-                    "val/SGcls_w@20": sgcls_recall_w[0],
-                    "val/SGcls_w@50": sgcls_recall_w[1],
-                    "val/SGcls_w@100": sgcls_recall_w[2],
-                    "val/Predcls_w@20": predcls_recall_w[0],
-                    "val/Predcls_w@50": predcls_recall_w[1],
-                    "val/Predcls_w@100": predcls_recall_w[2],
-                    "val/SGcls_wo@20": sgcls_recall_wo[0],
-                    "val/SGcls_wo@50": sgcls_recall_wo[1],
-                    "val/SGcls_wo@100": sgcls_recall_wo[2],
-                    "val/Predcls_wo@20": predcls_recall_wo[0],
-                    "val/Predcls_wo@50": predcls_recall_wo[1],
-                    "val/Predcls_wo@100": predcls_recall_wo[2],
-                    "val/SGcls_w_mean@20": sgcls_mean_recall_w[0],
-                    "val/SGcls_w_mean@50": sgcls_mean_recall_w[1],
-                    "val/SGcls_w_mean@100": sgcls_mean_recall_w[2],
-                    "val/Predcls_w_mean@20": predcls_mean_recall_w[0],
-                    "val/Predcls_w_mean@50": predcls_mean_recall_w[1],
-                    "val/Predcls_w_mean@100": predcls_mean_recall_w[2],
-                    "val/SGcls_wo_mean@20": sgcls_mean_recall_wo[0],
-                    "val/SGcls_wo_mean@50": sgcls_mean_recall_wo[1],
-                    "val/SGcls_wo_mean@100": sgcls_mean_recall_wo[2],
-                    "val/Predcls_wo_mean@20": predcls_mean_recall_wo[0],
-                    "val/Predcls_wo_mean@50": predcls_mean_recall_wo[1],
-                    "val/Predcls_wo_mean@100": predcls_mean_recall_wo[2],
-                    "val/zero_shot_recall@50": zero_shot_recall[0],
-                    "val/zero_shot_recall@100": zero_shot_recall[1],
-                    "val/non_zero_shot_recall@50": non_zero_shot_recall[0],
-                    "val/non_zero_shot_recall@100": non_zero_shot_recall[1],
-                    "val/all_zero_shot_recall@50": all_zero_shot_recall[0],
-                    "val/all_zero_shot_recall@100": all_zero_shot_recall[1],
-                    "val/Recall@1_obj_2d": obj_acc_2d_1,
-                    "val/Recall@5_obj_2d": obj_acc_2d_5,
-                    "val/Recall@10_obj_2d": obj_acc_2d_10,
-                    "val/Recall@1_pred_2d": rel_acc_2d_1,
-                    "val/Recall@3_pred_2d": rel_acc_2d_3,
-                    "val/Recall@5_pred_2d": rel_acc_2d_5,
-                    "val/Recall@50_triplet_2d": triplet_acc_2d_50,
-                    "val/Recall@100_triplet_2d": triplet_acc_2d_100,
-                    "val/mRecall@1_pred_2d": rel_acc_2d_mean_1,
-                    "val/mRecall@3_pred_2d": rel_acc_2d_mean_3,
-                    "val/mRecall@5_pred_2d": rel_acc_2d_mean_5,
-                    "val/mRecall@50_triplet_2d": mean_recall_2d[0],
-                    "val/mRecall@100_triplet_2d": mean_recall_2d[1],
-                    "epoch": self.model.epoch
-                }
-                
-                wandb.log(wandb_eval_logs, step=self.model.iteration)
-                
-            except Exception as e:
-                print(f"Error during wandb logging: {e}")
         
         self.log(logs, self.model.iteration)
         return mean_recall[0]

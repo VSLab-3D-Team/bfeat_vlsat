@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 import json
 import matplotlib.pyplot as plt
-import wandb
 
 def get_gt(objs_target, rels_target, edges, multi_rel_outputs):
     gt_edges = []
@@ -459,7 +458,7 @@ def compute_predicate_acc_per_class(cls_matrix_list, topk_pred_list, rel_label_l
     print("--------------------------------")
     #fig2=draw_graph(predicate_mean,1)
     #fig3=draw_graph(predicate_mean,2)
-    wandb.log({f"Accuracy@1 (epoch {epoch})": wandb.Image(fig1)}, step=epoch)
+    #wandb.log({f"Accuracy@1 (epoch {epoch})": wandb.Image(fig1)}, step=epoch)
     plt.close(fig1)
     #plt.close(fig2)
     #plt.close(fig3)
