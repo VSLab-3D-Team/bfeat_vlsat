@@ -1,25 +1,5 @@
-## :book: VL-SAT: Visual-Linguistic Semantics Assisted Training for 3D Semantic Scene Graph Prediction in Point Cloud (CVPR 2023 Highlight)
-<image src="demo.png" width="100%">
-<p align="center">
-  <small>:fire: If you found the training scheme in VL-SAT is useful, please help to :star: it or recommend it to your friends. Thanks:fire:</small>
-</p>
+# Environment Setup
 
-
-# Introduction
-This is a release of the code of our paper **_VL-SAT: Visual-Linguistic Semantics Assisted Training for 3D Semantic Scene Graph Prediction in Point Cloud_** (CVPR 2023 Highlight).
-
-Authors:
-Ziqin Wang,
-Bowen Cheng,
-Lichen Zhao,
-Dong Xu,
-Yang Tang,
-Lu Sheng* (*corresponding
-author)
-
-[[arxiv]](https://arxiv.org/pdf/2303.14408.pdf)  [[code]](https://github.com/wz7in/CVPR2023-VLSAT)  [[checkpoint]](https://drive.google.com/file/d/1_C-LXRlSobupApb-JsajKG5oxKnfKgdx/view?usp=sharing)
-
-# Dependencies
 ```bash
 conda create -n vlsat python=3.8
 conda activate vlsat
@@ -28,62 +8,61 @@ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --e
 pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.12.1+cu113.html
 pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.12.1+cu113.html
 pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.12.1+cu113.html
-pip install torch-geometric
+pip install torch-geometric==2.2.0
 pip install git+https://github.com/openai/CLIP.git
+pip install hydra
+pip install hydra-core --upgrade --pre
 ```
-# Prepare the data
-A. Download 3Rscan and 3DSSG-Sub Annotation, you can follow [3DSSG](https://github.com/ShunChengWu/3DSSG#preparation)
 
-B. Generate 2D Multi View Image
+---
+
+# Dataset Preparation
+
+## 1. Download 3RScan  
+First, download the 3RScan dataset. You can follow the instructions provided in the [3DSSG official guide](https://github.com/ShunChengWu/3DSSG#preparation).
+
+## 2. Generate 2D Multi-view Images  
+Convert the point clouds into 2D images from multiple viewpoints. Make sure to update the internal path in the script to match your local environment.
+
 ```bash
-# you should motify the path in pointcloud2image.py into your own path
+# Modify the path in pointcloud2image.py to match your local environment.
 python data/pointcloud2image.py
 ```
 
-C. You should arrange the file location like this
+## 3. Directory Structure  
+Make sure your folders are organized as follows for proper operation:
+
 ```
 data
   3DSSG_subset
     relations.txt
     classes.txt
-    
+
   3RScan
-    0a4b8ef6-a83a-21f2-8672-dce34dd0d7ca
-      multi_view
+    <scan_id_1>
+      multi_view/
       labels.instances.align.annotated.v2.ply
-    ...  
-      
+    <scan_id_2>
+    ...
 ```
 
-D. Train your own clip adapter 
+---
 
-``` python clip_adapter/main.py ```
+# Training & Evaluation
 
-or just use the checkpoint 
-
-``` clip_adapter/checkpoint/origin_mean.pth ```
-
-# Run Code
 ```bash
 # Train
 python -m main --mode train --config <config_path> --exp <exp_name>
-# Eval
+
+# Evaluate
 python -m main --mode eval --config <config_path> --exp <exp_name>
 ```
-In this repo, we have provided a default [config](https://github.com/wz7in/CVPR2023-VLSAT/blob/main/config/mmgnet.json)
 
-# Paper
+---
 
-If you find the code useful please consider citing our [paper](https://arxiv.org/pdf/2303.14408.pdf):
-```
-@article{wang2023vl,
-  title={VL-SAT: Visual-Linguistic Semantics Assisted Training for 3D Semantic Scene Graph Prediction in Point Cloud},
-  author={Wang, Ziqin and Cheng, Bowen and Zhao, Lichen and Xu, Dong and Tang, Yang and Sheng, Lu},
-  journal={arXiv preprint arXiv:2303.14408},
-  year={2023}
-}
-```
+# References
 
+This project is inspired by and partially based on the following repositories:
 
-# Acknowledgement
-This repository is partly based on [3DSSG](https://github.com/ShunChengWu/3DSSG) and [CLIP](https://github.com/openai/CLIP) repositories.
+- [3DSSG](https://github.com/ShunChengWu/3DSSG)
+- [VL-SAT (CVPR 2023)](https://github.com/wz7in/CVPR2023-VLSAT)
