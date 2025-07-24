@@ -5,7 +5,7 @@
     "PATH": "/data/hkh7710/sy/vlsat/output",
     "multi_view_root": "/data2/local_datasets/3RScan",
     "VERBOSE": false,
-    "SEED": 2020,
+    "SEED": 2025,
     "MAX_EPOCHES": 100,
     "LR": 0.0001,
     "W_DECAY": false,
