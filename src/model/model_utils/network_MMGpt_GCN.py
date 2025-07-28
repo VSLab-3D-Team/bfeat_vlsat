@@ -291,7 +291,7 @@ class TripletGCN(MessagePassing):
         self.dim_node = dim_node
         self.dim_edge = dim_edge
         self.dim_hidden = dim_hidden
-        self.nn1 = build_mlp([dim_node*2+dim_edge, dim_hidden, dim_hidden*2+dim_edge],
+        self.nn1 = build_mlp([dim_node*2+dim_edge*2, dim_hidden, dim_hidden*2+dim_edge],
                       do_bn= use_bn, on_last=True)
         self.nn2 = build_mlp([dim_hidden,dim_hidden,dim_node],do_bn= use_bn)
         self.index_get = Gen_Index(flow='target_to_source')
