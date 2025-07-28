@@ -190,7 +190,8 @@ class MMG_pt_single(torch.nn.Module):
         super().__init__()
 
         self.num_heads = num_heads
-        self.depth = 5
+        depth = 5
+        self.depth = depth
 
         self.self_attn = nn.ModuleList(
             MultiHeadAttention(d_model=dim_node, d_k=dim_node // num_heads, d_v=dim_node // num_heads, h=num_heads) 
