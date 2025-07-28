@@ -225,7 +225,7 @@ class MMG_pt_single(torch.nn.Module):
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
         for i in range(self.depth):
-            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
+            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index)
             
             if i < (self.depth-1) or self.depth==1:
                 obj_feature_3d = F.relu(obj_feature_3d)
