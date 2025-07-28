@@ -224,51 +224,8 @@ class MMG_pt_single(torch.nn.Module):
     
     def forward(self, obj_feature_3d, edge_feature_3d, edge_index, batch_ids, obj_center=None, istrain=False):
         
-        if obj_center is not None:
-            batch_size = batch_ids.max().item() + 1
-            N_K = obj_feature_3d.shape[0]
-            obj_mask = torch.zeros(1, 1, N_K, N_K).cuda()
-            obj_distance_weight = torch.zeros(1, self.num_heads, N_K, N_K).cuda()
-            count = 0
-
-            for i in range(batch_size):
-                idx_i = torch.where(batch_ids == i)[0]
-                obj_mask[:, :, count:count + len(idx_i), count:count + len(idx_i)] = 1
-            
-                center_A = obj_center[None, idx_i, :].clone().detach().repeat(len(idx_i), 1, 1)
-                center_B = obj_center[idx_i, None, :].clone().detach().repeat(1, len(idx_i), 1)
-                center_dist = (center_A - center_B)
-                dist = center_dist.pow(2)
-                dist = torch.sqrt(torch.sum(dist, dim=-1))[:, :, None]
-                weights = torch.cat([center_dist, dist], dim=-1).unsqueeze(0)  # 1 N N 4
-                dist_weights = self.self_attn_fc(weights).permute(0, 3, 1, 2)  # 1 num_heads N N
-                
-                attention_matrix_way = 'add'
-                obj_distance_weight[:, :, count:count + len(idx_i), count:count + len(idx_i)] = dist_weights
-
-                count += len(idx_i)
-        else:
-            obj_mask = None
-            obj_distance_weight = None
-            attention_matrix_way = 'mul'
-        
         for i in range(self.depth):
-            identity_obj = self.residual_proj[i](obj_feature_3d)
-            
-            obj_feature_3d = obj_feature_3d.unsqueeze(0)
-            obj_feature_attn = self.self_attn[i](
-                obj_feature_3d, obj_feature_3d, obj_feature_3d, 
-                attention_weights=obj_distance_weight, way=attention_matrix_way, 
-                attention_mask=obj_mask, use_knn=False
-            )
-            obj_feature_attn = obj_feature_attn.squeeze(0)
-            
-            obj_feature_attn = self.layer_norms[i](obj_feature_attn)
-            
-            obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_attn, edge_feature_3d, edge_index)
-            
-            obj_feature_3d = obj_feature_3d_new + identity_obj
-            edge_feature_3d = edge_feature_3d_new
+            obj_feature_3d, edge_feature_3d = self.gcn_3ds[i](obj_feature_3d, edge_feature_3d, edge_index, istrain=istrain)
             
             if i < (self.depth-1) or self.depth==1:
                 obj_feature_3d = F.relu(obj_feature_3d)
