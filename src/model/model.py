@@ -118,7 +118,7 @@ class MMGNet():
             collate_fn=collate_fn_mmg,
         )
         
-        self.model.epoch = 30
+        self.model.epoch = 1
         keep_training = True
         
         if self.total == 1:
@@ -177,7 +177,7 @@ class MMGNet():
             else:
                 val_interval = 2
             
-            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % val_interval == 0):
+            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
                 print('start validation...')
                 rel_acc_val = self.validation()
                 self.model.eva_res = rel_acc_val
