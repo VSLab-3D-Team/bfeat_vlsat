@@ -295,6 +295,13 @@ class TripletGCN(MessagePassing):
                       do_bn= use_bn, on_last=True)
         self.nn2 = build_mlp([dim_hidden,dim_hidden,dim_node],do_bn= use_bn)
         self.index_get = Gen_Index(flow='target_to_source')
+        self.edge_gate = nn.Sequential(
+            nn.Linear(dim_edge, dim_edge // 2),
+            nn.ReLU(),
+            nn.BatchNorm1d(dim_edge // 2),
+            nn.Linear(dim_edge // 2, 1),
+            nn.Sigmoid()
+        )
         
     def forward(self, x, edge_feature, edge_index):
         edge_dict = {}
