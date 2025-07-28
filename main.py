@@ -104,7 +104,7 @@ def load_config():
     20250725_003841_front_gat
     20250725_003417_front_gat
     '''
-    config.exp = "20250725_010032_2029"
+    config.exp = "20250725_010018_2029"
     
     print(f"exp name: {config.exp}")
     
