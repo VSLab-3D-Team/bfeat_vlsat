@@ -24,7 +24,7 @@
     "EDGE_BUILD_TYPE": "KNN",
     "WEIGHTING": true,
     "MODEL": {
-      "N_LAYERS": 4,
+      "N_LAYERS": 2,
       "USE_SPATIAL": true,
       "WITH_BN": false,
       "USE_GCN": true,
@@ -56,7 +56,7 @@
       "NONE_RATIO": 1.0,
       "NUM_HEADS": 8,
       "use_pretrain":"",
-      "obj_pretrian_path": "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/comparison/bfeat_vlsat/model_ckps/triple_modal_wo_hneg_layer8.pth",
+      "obj_pretrian_path": "/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/comparison/bfeat_vlsat/model_ckps/dgcnn_cls_best.pth",
       "use_descriptor": true,
       "obj_label_path":"/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/comparison/bfeat_vlsat/data/3DSSG_subset/classes.txt",
       "rel_label_path":"/home/michael/Michael/robotics/SceneGraph/Better_3DFeat/comparison/bfeat_vlsat/data/3DSSG_subset/relations.txt",

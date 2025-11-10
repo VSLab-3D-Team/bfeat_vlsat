@@ -11,7 +11,12 @@ from torch.utils.tensorboard import SummaryWriter
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
 # from src.model.SGFN_MMG.model_single import Mmgnet
-from src.model.SGFN_MMG.model_pt import Mmgnet
+# from src.model.SGFN_MMG.model_pt import Mmgnet
+from src.model.SGFN_MMG.model_pt_pp import Mmgnet
+# from src.model.SGFN_MMG.model_crosspt import Mmgnet
+# from src.model.SGFN_MMG.model_clip2pt import Mmgnet
+# from src.model.SGFN_MMG.baseline_sgpn import SGPN
+# from src.model.SGFN_MMG.baseline_sgfn import SGFN
 from src.utils import op_utils
 from src.utils.eva_utils_acc import *
 from src.utils.eval_utils_recall import *
