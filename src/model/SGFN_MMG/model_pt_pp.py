@@ -13,7 +13,7 @@ from src.model.model_utils.network_util import Gen_Index, build_mlp
 from src.model.model_utils.network_PointNet import PointNetfeat, PointNetRelCls, PointNetRelClsMulti
 # from src.model.model_utils.network_PointNetpt import PointNetEncoder
 from src.model.model_utils.network_PointNetpp import PointNetpp
-from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor
+from src.model.model_utils.network_RelFeatNet import RelFeatNaiveExtractor, RelFeatMergeExtractor
 from clip_adapter.model import AdapterModel
 
 class Mmgnet(BaseModel):
@@ -59,7 +59,7 @@ class Mmgnet(BaseModel):
         self.obj_encoder.load_state_dict(torch.load(self.mconfig.obj_pretrian_path))
         self.obj_encoder = self.obj_encoder.eval()
         
-        self.rel_encoder_3d = RelFeatNaiveExtractor(
+        self.rel_encoder_3d = RelFeatMergeExtractor(
             dim_point_feature,
             dim_descriptor,
             dim_edge_feature,

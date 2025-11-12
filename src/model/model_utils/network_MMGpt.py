@@ -8,6 +8,50 @@ from src.model.model_utils.network_util import (MLP, Aggre_Index, Gen_Index,
                                                 build_mlp)
 from src.model.transformer.attention import MultiHeadAttention
 
+class FiLMResidualBlock(nn.Module):
+    def __init__(self, dim):
+        super(FiLMResidualBlock, self).__init__()
+        self.fc1 = nn.Linear(dim, dim)
+        self.bn1 = nn.BatchNorm1d(dim)
+        self.fc2 = nn.Linear(dim, dim)
+        self.bn2 = nn.BatchNorm1d(dim)
+        self.activation = nn.ReLU()
+
+    def forward(self, x, gamma, beta):
+        residual = x  # Skip Connection
+        out = self.fc1(x)
+        out = self.bn1(out)
+        out = gamma * out + beta  # FiLM modulation
+        out = self.activation(out)
+        out = self.fc2(out)
+        out = self.bn2(out)
+        out += residual  # Add Skip Connection
+        out = self.activation(out)
+        return out
+
+class ExplicitEdgeConditioningviaObject(nn.Module):
+    # Explicitly condition edge features via object features with FiLM layers
+    # Using P(e_ij | v_i, v_j) = \sum_{o'i, o'j} P(e_ij | o'i, o'j) P(o'i|vi) P(o'j|vj)
+    def __init__(self, n_dim_node, n_dim_edge): # , num_layers=3
+        super(ExplicitEdgeConditioningviaObject, self).__init__()
+        self.obj_to_edge = nn.Sequential(
+            nn.Linear(n_dim_node * 2, n_dim_edge*2),
+            nn.ReLU(),
+            nn.Linear(n_dim_edge * 2, n_dim_edge * 2),
+            nn.ReLU()
+        )
+        self.film_layer = FiLMResidualBlock(n_dim_edge)
+        # self.res_blocks = nn.Sequential(*[FiLMResidualBlock(n_dim_edge) for _ in range(num_layers)])
+
+    def forward(self, obj_feat_i, obj_feat_j, edge_feats):
+        # obj_feat_i, obj_feat_j: [B, D_node]
+        # edge_feats: [B, D_edge]
+        merged_feat = torch.cat([obj_feat_i, obj_feat_j], dim=-1)
+        edge_condition = self.obj_to_edge(merged_feat)
+        gamma, beta = torch.chunk(edge_condition, 2, dim=1)
+        edge_conditioned_feat = self.film_layer(edge_feats, gamma, beta)
+        return edge_conditioned_feat
+
 
 class GraphEdgeAttenNetwork(torch.nn.Module):
     def __init__(self, num_heads, dim_node, dim_edge, dim_atten, aggr='max', use_bn=False,
@@ -37,6 +81,8 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             dim_node=dim_node, dim_edge=dim_edge, dim_atten=dim_atten,
             num_heads=num_heads, use_bn=use_bn, attention=attention, use_edge=use_edge, **kwargs)
         
+        self.condition_edge = ExplicitEdgeConditioningviaObject(dim_node, dim_edge)
+        
         self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
                             do_bn=use_bn, on_last=False)
         self.layer_norm = nn.LayerNorm(dim_node)
@@ -53,17 +99,22 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             src, dst = edge_index[0, i].item(), edge_index[1, i].item()
             edge_dict[(src, dst)] = i
         
+        edge_conditioned_feature = self.condition_edge(x_i, x_j, edge_feature)
+        
         reverse_edge_feature = torch.zeros_like(edge_feature)
         for i in range(edge_index.shape[1]):
             src, dst = edge_index[0, i].item(), edge_index[1, i].item()
             if (dst, src) in edge_dict:
                 reverse_idx = edge_dict[(dst, src)]
-                reverse_edge_feature[i] = edge_feature[reverse_idx]
+                reverse_edge_feature[i] = edge_conditioned_feature[reverse_idx]
+                # reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        gates = self.edge_gate(edge_feature)
+        gates = self.edge_gate(edge_conditioned_feature)
+        # gates = self.edge_gate(edge_feature)
         reverse_edge_feature = gates * reverse_edge_feature
-        
-        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
+
+        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_conditioned_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
+        # xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
         subject_edges = {}
         object_edges = {}
@@ -180,7 +231,6 @@ class MultiHeadedEdgeAttention(torch.nn.Module):
             raise NotImplementedError('')
         
         return x, edge_feature, prob
-    
 
 class MMG_pt_single(torch.nn.Module):
     def __init__(self, dim_node, dim_edge, dim_atten, num_heads=1, aggr='max', 

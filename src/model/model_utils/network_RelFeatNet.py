@@ -149,3 +149,65 @@ class RelFeatResNetWithFiLM(nn.Module):
         edge_init_feats = self.merge_layer(m_ij).squeeze(1)
         edge_init_feats = self.res_blocks(edge_init_feats)
         return self.fc_out(edge_init_feats)
+
+class FiLMResidualBlock(nn.Module):
+    def __init__(self, dim):
+        super(FiLMResidualBlock, self).__init__()
+        self.fc1 = nn.Linear(dim, dim)
+        self.bn1 = nn.BatchNorm1d(dim)
+        self.fc2 = nn.Linear(dim, dim)
+        self.bn2 = nn.BatchNorm1d(dim)
+        self.activation = nn.ReLU()
+
+    def forward(self, x, gamma, beta):
+        residual = x  # Skip Connection
+        out = self.fc1(x)
+        out = self.bn1(out)
+        out = gamma * out + beta  # FiLM modulation
+        out = self.activation(out)
+        out = self.fc2(out)
+        out = self.bn2(out)
+        out += residual  # Add Skip Connection
+        out = self.activation(out)
+        return out
+
+class RelFeatResNetConditionedFiLM(nn.Module):
+    def __init__(self, dim_obj_feats, dim_geo_feats, dim_out_feats, num_layers=6, hidden_dim=128):
+        super(RelFeatResNetConditionedFiLM, self).__init__()
+
+        self.obj_to_edge = nn.Sequential(
+            nn.Linear(dim_obj_feats * 2, dim_out_feats*2),
+            nn.ReLU(),
+            nn.Linear(dim_out_feats * 2, dim_out_feats * 2),
+            nn.ReLU()
+        )
+        self.film_layer = FiLMResidualBlock(dim_out_feats)
+        
+        self.obj_proj = nn.Linear(dim_obj_feats, dim_out_feats)
+        
+        self.geo_encoder = nn.Sequential(
+            nn.Linear(dim_geo_feats, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU()
+        )
+        
+        self.geo_proj = nn.Linear(dim_geo_feats, dim_out_feats)
+        self.film_generator = nn.Linear(hidden_dim, dim_out_feats * 2)
+        self.merge_layer = nn.Conv1d(in_channels=3, out_channels=1, kernel_size=5, stride=1, padding="same")
+        self.res_blocks = nn.Sequential(*[ResidualBlock(dim_out_feats) for _ in range(num_layers)])
+        self.fc_out = nn.Linear(dim_out_feats, dim_out_feats)  # 출력 레이어
+    
+    def forward(self, x_i, x_j, geo_feats):
+        p_i = self.obj_proj(x_i)
+        p_j = self.obj_proj(x_j)
+        merged_feat = torch.cat([p_i, p_j], dim=-1)
+        edge_feat = self.obj_to_edge(merged_feat)
+        gamma_edge, beta_edge = torch.chunk(edge_feat, 2, dim=1)
+        
+        g_ij = self.geo_proj(geo_feats)
+        edge_conditioned_feat = self.film_layer(g_ij, gamma_edge, beta_edge)
+        edge_conditioned_feat = self.res_blocks(edge_conditioned_feat)
+        return self.fc_out(edge_conditioned_feat)
