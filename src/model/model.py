@@ -12,7 +12,8 @@ from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
 # from src.model.SGFN_MMG.model_single import Mmgnet
 # from src.model.SGFN_MMG.model_pt import Mmgnet
-from src.model.SGFN_MMG.model_pt_pp import Mmgnet
+from src.model.SGFN_MMG.modelpt_pp_debias import Mmgnet
+# from src.model.SGFN_MMG.model_pt_pp import Mmgnet
 # from src.model.SGFN_MMG.model_crosspt import Mmgnet
 # from src.model.SGFN_MMG.model_clip2pt import Mmgnet
 # from src.model.SGFN_MMG.baseline_sgpn import SGPN
@@ -86,6 +87,7 @@ class MMGNet():
         self.results_path = os.path.join(config.PATH, self.model_name, self.exp, 'results')
         self.trace_path = os.path.join(config.PATH, self.model_name, self.exp, 'traced')
         self.writter = None
+        self.calc_object_cooccurrence()
         
         if not self.config.EVAL:
             pth_log = os.path.join(config.PATH, "logs", self.model_name, self.exp)
@@ -109,7 +111,31 @@ class MMGNet():
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = \
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids
-          
+    
+    ## Calculate co-occurrence matrix of object labels
+    def calc_object_cooccurrence(self):
+        N = len(self.dataset_train.classNames)
+        classNames = self.dataset_train.classNames[:]
+        eps = 1e-8
+        # global co-occurrence matrix
+        self.cooccur_mat = torch.zeros((N, N))
+        for s_id, edges in self.dataset_train.relationship_json.items():
+            nodes = list(self.dataset_train.objs_json[s_id].keys())
+            objs_label = self.dataset_train.objs_json[s_id]
+            for r in edges:
+                if r[0] not in nodes or r[1] not in nodes: continue
+                sub_label_idx = classNames.index(objs_label[r[0]])
+                obj_label_idx = classNames.index(objs_label[r[1]])
+                if not sub_label_idx == obj_label_idx:
+                    self.cooccur_mat[sub_label_idx][obj_label_idx] += 1
+                    self.cooccur_mat[obj_label_idx][sub_label_idx] += 1
+                else :
+                    self.cooccur_mat[obj_label_idx][sub_label_idx] += 1
+        
+        obj_occur_num = torch.from_numpy(self.dataset_train.o_obj_cls)
+        obj_lift = (self.cooccur_mat + 1) / ((obj_occur_num[:, None] + N) * (obj_occur_num[None, :] + N))
+        self.obj_log_lift = torch.log(obj_lift + eps)  # (N, N)
+    
     def train(self):
         ''' create data loader '''
         drop_last = True
@@ -157,7 +183,7 @@ class MMGNet():
                 ''' get data '''
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
                 logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
-                                                weights_obj=self.dataset_train.w_cls_obj, 
+                                                weights_obj=self.obj_log_lift, # self.dataset_train.w_cls_obj, 
                                                 weights_rel=self.dataset_train.w_cls_rel,
                                                 ignore_none_rel = False)
                 

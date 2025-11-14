@@ -94,10 +94,11 @@ class SSGDatasetGraph(data.Dataset):
         # for multi relation output, we just remove off 'None' relationship
         if multi_rel_outputs:
             self.relationNames.pop(0)
-                
-        wobjs, wrels, o_obj_cls, o_rel_cls = compute_weight_occurrences.compute(self.classNames, self.relationNames, data,selected_scans, False)
-        self.w_cls_obj = torch.from_numpy(np.array(o_obj_cls)).float().to(self.config.DEVICE)
-        self.w_cls_rel = torch.from_numpy(np.array(o_rel_cls)).float().to(self.config.DEVICE)
+        
+        ## Here is changed!!!!!! Important!!
+        wobjs, wrels, self.o_obj_cls, self.o_rel_cls = compute_weight_occurrences.compute(self.classNames, self.relationNames, data,selected_scans, False)
+        self.w_cls_obj = torch.from_numpy(np.array(self.o_obj_cls)).float().to(self.config.DEVICE)
+        self.w_cls_rel = torch.from_numpy(np.array(self.o_rel_cls)).float().to(self.config.DEVICE)
         
         # for single relation output, we set 'None' relationship weight as 1e-3
         if not multi_rel_outputs:
