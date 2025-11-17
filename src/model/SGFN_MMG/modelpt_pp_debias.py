@@ -376,7 +376,7 @@ class Mmgnet(BaseModel):
             # loss_rel_KL_2d = F.kl_div(rel_logits_2d_kl.log(), rel_logits_3d_kl, reduction='sum')
 
             # Dynamic Co-occurrence calculation in batch
-            beta = 0.5
+            beta = 0.8
             sub_label, obj_label = self.index_get(gt_cls.unsqueeze(-1), edge_indices.t().contiguous()) 
             w_lifted_obj_pair = torch.exp(-beta * weights_obj[sub_label.long(), obj_label.long()]).to("cuda")
             w_lifted_obj_pair = w_lifted_obj_pair * (w_lifted_obj_pair.numel() / (w_lifted_obj_pair.sum().clamp_min(1e-8)))
