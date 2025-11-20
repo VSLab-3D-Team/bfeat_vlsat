@@ -379,7 +379,7 @@ class Mmgnet(BaseModel):
             # Dynamic Co-occurrence calculation in batch
             beta, tau = 0.8, 0.5
             sub_label, obj_label = self.index_get(gt_cls.unsqueeze(-1), edge_indices.t().contiguous()) 
-            adj_prior = tau * weights_rel[sub_label.long(), obj_label.long(), :].to("cuda")
+            adj_prior = tau * weights_rel[sub_label.long(), obj_label.long(), :].squeeze(1).to("cuda")
             pred_logit = torch.logit(rel_cls_3d) - adj_prior
             
             w_lifted_obj_pair = torch.exp(-beta * weights_obj[sub_label.long(), obj_label.long()]).to("cuda")
