@@ -116,10 +116,13 @@ class MMGNet():
     ## Calculate co-occurrence matrix of object labels
     def calc_object_cooccurrence(self):
         N = len(self.dataset_train.classNames)
+        M = len(self.dataset_train.relationNames)
         classNames = self.dataset_train.classNames[:]
+        relationNames = self.dataset_train.relationNames[:]
         eps = 1e-8
         # global co-occurrence matrix
         self.cooccur_mat = torch.zeros((N, N))
+        self.rel_cooccr_mat = torch.zeros((N, N, M))
         for s_id, edges in self.dataset_train.relationship_json.items():
             nodes = list(self.dataset_train.objs_json[s_id].keys())
             objs_label = self.dataset_train.objs_json[s_id]
@@ -127,16 +130,17 @@ class MMGNet():
                 if r[0] not in nodes or r[1] not in nodes: continue
                 sub_label_idx = classNames.index(objs_label[r[0]])
                 obj_label_idx = classNames.index(objs_label[r[1]])
-                if not sub_label_idx == obj_label_idx:
-                    self.cooccur_mat[sub_label_idx][obj_label_idx] += 1
-                    self.cooccur_mat[obj_label_idx][sub_label_idx] += 1
-                else :
-                    self.cooccur_mat[obj_label_idx][sub_label_idx] += 1
+                rel_label_idx = relationNames.index(r[3])
+                self.cooccur_mat[sub_label_idx][obj_label_idx] += 1
+                self.rel_cooccr_mat[sub_label_idx][obj_label_idx][rel_label_idx] += 1
         
         obj_occur_num = torch.from_numpy(self.dataset_train.o_obj_cls)
         obj_lift = (self.cooccur_mat + 1) / ((obj_occur_num[:, None] + N) * (obj_occur_num[None, :] + N))
         self.obj_log_lift = torch.log(obj_lift + eps)  # (N, N)
-    
+        self.pred_log_list = torch.log(
+            (self.rel_cooccr_mat + 1.0) / (self.rel_cooccr_mat.sum(-1, keepdim=True) + M) + eps
+        )  # (C_obj, C_obj, R)
+        
     def train(self):
         ''' create data loader '''
         drop_last = True
@@ -185,7 +189,7 @@ class MMGNet():
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
                 logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
                                                 weights_obj=self.obj_log_lift, # self.dataset_train.w_cls_obj, 
-                                                weights_rel=self.dataset_train.w_cls_rel,
+                                                weights_rel= self.pred_log_list, # self.dataset_train.w_cls_rel,
                                                 ignore_none_rel = False)
                 
                 iteration = self.model.iteration
