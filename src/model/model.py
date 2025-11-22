@@ -11,8 +11,8 @@ from torch.utils.tensorboard import SummaryWriter
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
 # from src.model.SGFN_MMG.model_single import Mmgnet
-# from src.model.SGFN_MMG.model_pt import Mmgnet
-from src.model.SGFN_MMG.modelpt_pp_debias import Mmgnet
+from src.model.SGFN_MMG.model_pt import Mmgnet
+# from src.model.SGFN_MMG.modelpt_pp_debias import Mmgnet
 # from src.model.SGFN_MMG.modelpt_debias import Mmgnet
 # from src.model.SGFN_MMG.model_pt_pp import Mmgnet
 # from src.model.SGFN_MMG.model_crosspt import Mmgnet
@@ -188,8 +188,8 @@ class MMGNet():
                 ''' get data '''
                 obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(items)
                 logs = self.model.process_train(obj_points, obj_2d_feats, gt_class, descriptor, gt_rel_cls, edge_indices, batch_ids, with_log=True,
-                                                weights_obj=self.obj_log_lift, # self.dataset_train.w_cls_obj, 
-                                                weights_rel= self.pred_log_list, # self.dataset_train.w_cls_rel,
+                                                weights_obj= self.dataset_train.w_cls_obj, # self.obj_log_lift
+                                                weights_rel= self.dataset_train.w_cls_rel, # self.pred_log_list,
                                                 ignore_none_rel = False)
                 
                 iteration = self.model.iteration

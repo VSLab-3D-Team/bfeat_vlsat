@@ -351,20 +351,20 @@ class Mmgnet(BaseModel):
                 else:
                     weight = None
             elif self.mconfig.WEIGHT_EDGE == 'DYNAMIC':
-                # batch_mean = torch.sum(gt_rel_cls, dim=(0))
-                # zeros = (gt_rel_cls.sum(-1) ==0).sum().unsqueeze(0)
-                # batch_mean = torch.cat([zeros,batch_mean],dim=0)
-                # weight = torch.abs(1.0 / (torch.log(batch_mean+1)+1)) # +1 to prevent 1 /log(1) = inf                
-                # if ignore_none_rel:
-                #     weight[0] = 0
-                #     weight *= 1e-2 # reduce the weight from ScanNet
-                #     # print('set weight of none to 0')
-                # if 'NONE_RATIO' in self.mconfig:
-                #     weight[0] *= self.mconfig.NONE_RATIO
+                batch_mean = torch.sum(gt_rel_cls, dim=(0))
+                zeros = (gt_rel_cls.sum(-1) ==0).sum().unsqueeze(0)
+                batch_mean = torch.cat([zeros,batch_mean],dim=0)
+                weight = torch.abs(1.0 / (torch.log(batch_mean+1)+1)) # +1 to prevent 1 /log(1) = inf                
+                if ignore_none_rel:
+                    weight[0] = 0
+                    weight *= 1e-2 # reduce the weight from ScanNet
+                    # print('set weight of none to 0')
+                if 'NONE_RATIO' in self.mconfig:
+                    weight[0] *= self.mconfig.NONE_RATIO
                     
-                # weight[torch.where(weight==0)] = weight[0].clone() if not ignore_none_rel else 0# * 1e-3
-                # weight = weight[1:]
-                weight = None
+                weight[torch.where(weight==0)] = weight[0].clone() if not ignore_none_rel else 0# * 1e-3
+                weight = weight[1:]
+                # weight = None
             elif self.mconfig.WEIGHT_EDGE == 'OCCU':
                 weight = weights_rel
             elif self.mconfig.WEIGHT_EDGE == 'NONE':
@@ -379,13 +379,14 @@ class Mmgnet(BaseModel):
             # Dynamic Co-occurrence calculation in batch
             beta, tau = 0.8, 0.5
             sub_label, obj_label = self.index_get(gt_cls.unsqueeze(-1), edge_indices.t().contiguous()) 
-            adj_prior = tau * weights_rel[sub_label.long(), obj_label.long(), :].squeeze(1).to("cuda")
-            pred_logit = torch.logit(rel_cls_3d) - adj_prior
+            # adj_prior = tau * weights_rel[sub_label.long(), obj_label.long(), :].squeeze(1).to("cuda")
+            # pred_logit = torch.logit(rel_cls_3d) - adj_prior
             
             w_lifted_obj_pair = torch.exp(-beta * weights_obj[sub_label.long(), obj_label.long()]).to("cuda")
             w_lifted_obj_pair = w_lifted_obj_pair * (w_lifted_obj_pair.numel() / (w_lifted_obj_pair.sum().clamp_min(1e-8)))
 
-            loss_rel_3d = F.binary_cross_entropy_with_logits(pred_logit, gt_rel_cls, reduction='none') # weight=weight,
+            # loss_rel_3d = F.binary_cross_entropy_with_logits(pred_logit, gt_rel_cls, reduction='none') # weight=weight,
+            loss_rel_3d = F.binary_cross_entropy(rel_cls_3d, gt_rel_cls, weight=weight, reduction='none')
             loss_per_sample = loss_rel_3d.mean(dim=1)
             loss_rel_3d = (w_lifted_obj_pair * loss_per_sample).mean()
         else:
@@ -429,7 +430,7 @@ class Mmgnet(BaseModel):
         # compute triplet loss
         # triplet_loss = self.compute_triplet_loss(obj_logits_3d, rel_cls_3d, obj_logits_2d, rel_cls_2d, edge_indices)
                
-        loss = lambda_o * (loss_obj_3d) + 3.0 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) # + rel_diff
+        loss = lambda_o * (loss_obj_3d) + 3.0 * lambda_r * (loss_rel_3d) + 0.1 * (rel_mimic_3d) + rel_diff
         #loss = lambda_o * (loss_obj_2d + loss_obj_3d) + 3 * lambda_r * (loss_rel_2d + loss_rel_3d) + 0.1 * (loss_mimic + rel_mimic_2d)
         self.backward(loss)
         
