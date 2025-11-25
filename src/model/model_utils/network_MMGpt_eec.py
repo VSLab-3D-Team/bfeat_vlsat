@@ -34,12 +34,12 @@ class ExplicitEdgeConditioningviaObject(nn.Module):
     # Using P(e_ij | v_i, v_j) = \sum_{o'i, o'j} P(e_ij | o'i, o'j) P(o'i|vi) P(o'j|vj)
     def __init__(self, n_dim_node, n_dim_edge): # , num_layers=3
         super(ExplicitEdgeConditioningviaObject, self).__init__()
-        self.obj_to_edge = nn.Sequential(
-            nn.Linear(n_dim_node * 2, n_dim_edge*2),
-            nn.ReLU(),
-            nn.Linear(n_dim_edge * 2, n_dim_edge * 2),
-            nn.ReLU()
-        )
+        self.obj_to_edge = build_mlp([
+            n_dim_node * 2, 
+            n_dim_edge * 2, 
+            n_dim_edge * 2
+        ], do_bn=False, on_last=False)
+        
         self.film_layer = FiLMResidualBlock(n_dim_edge)
         # self.res_blocks = nn.Sequential(*[FiLMResidualBlock(n_dim_edge) for _ in range(num_layers)])
 
@@ -250,7 +250,11 @@ class MMG_pt_single(torch.nn.Module):
         self.layer_norms = nn.ModuleList([
             nn.LayerNorm(dim_node) for _ in range(depth)
         ])
-
+        self.index_get = Gen_Index(flow=flow)
+        self.coeff_layer = build_mlp([
+            dim_node * 2, dim_node, dim_edge
+        ], do_bn=use_bn, on_last=False)
+        
         self.gcn_3ds = torch.nn.ModuleList()
         
         for _ in range(self.depth):
@@ -326,7 +330,10 @@ class MMG_pt_single(torch.nn.Module):
             
             obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_attn, edge_feature_3d, edge_index, istrain=istrain)
             
+            # x_i, x_j = self.index_get(obj_feature_3d_new, edge_index)
+            # z_ij = torch.sigmoid(self.coeff_layer(torch.cat([x_i, x_j], dim=-1)))
             obj_feature_3d = obj_feature_3d_new + identity_obj
+            # edge_feature_3d = z_ij * edge_feature_3d_new + (1 - z_ij) * edge_feature_3d
             edge_feature_3d = edge_feature_3d_new
             
             if i < (self.depth-1) or self.depth==1:
