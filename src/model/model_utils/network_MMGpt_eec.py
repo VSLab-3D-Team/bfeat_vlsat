@@ -330,11 +330,11 @@ class MMG_pt_single(torch.nn.Module):
             
             obj_feature_3d_new, edge_feature_3d_new = self.gcn_3ds[i](obj_feature_attn, edge_feature_3d, edge_index, istrain=istrain)
             
-            # x_i, x_j = self.index_get(obj_feature_3d_new, edge_index)
-            # z_ij = torch.sigmoid(self.coeff_layer(torch.cat([x_i, x_j], dim=-1)))
+            x_i, x_j = self.index_get(obj_feature_3d_new, edge_index)
+            z_ij = torch.sigmoid(self.coeff_layer(torch.cat([x_i, x_j], dim=-1)))
             obj_feature_3d = obj_feature_3d_new + identity_obj
-            # edge_feature_3d = z_ij * edge_feature_3d_new + (1 - z_ij) * edge_feature_3d
-            edge_feature_3d = edge_feature_3d_new
+            edge_feature_3d = z_ij * edge_feature_3d_new + (1 - z_ij) * edge_feature_3d
+            # edge_feature_3d = edge_feature_3d_new
             
             if i < (self.depth-1) or self.depth==1:
                 obj_feature_3d = F.relu(obj_feature_3d)
