@@ -371,11 +371,25 @@ class Mmgnet(BaseModel):
             else:
                 raise NotImplementedError("unknown weight_edge type")
 
+            # Dynamic Co-occurrence calculation in batch
+            beta, tau = 0.8, 0.5
+            sub_label, obj_label = self.index_get(gt_cls.unsqueeze(-1), edge_indices.t().contiguous()) 
+            # adj_prior = tau * weights_rel[sub_label.long(), obj_label.long(), :].squeeze(1).to("cuda")
+            # pred_logit = torch.logit(rel_cls_3d) - adj_prior
+            
+            w_lifted_obj_pair = torch.exp(-beta * weights_obj[sub_label.long(), obj_label.long()]).to("cuda")
+            w_lifted_obj_pair = w_lifted_obj_pair * (w_lifted_obj_pair.numel() / (w_lifted_obj_pair.sum().clamp_min(1e-8)))
+
+            # loss_rel_3d = F.binary_cross_entropy_with_logits(pred_logit, gt_rel_cls, reduction='none') # weight=weight,
+            loss_rel_3d = F.binary_cross_entropy(rel_cls_3d, gt_rel_cls, weight=weight, reduction='none')
+            loss_per_sample = loss_rel_3d.mean(dim=1)
+            loss_rel_3d = (w_lifted_obj_pair * loss_per_sample).mean()
+            
             # rel_logits_3d_kl = F.softmax(rel_cls_3d.clone().detach(), dim=-1)
             # rel_logits_2d_kl = F.softmax(rel_cls_2d.clone(), dim=-1)
             # loss_rel_KL_2d = F.kl_div(rel_logits_2d_kl.log(), rel_logits_3d_kl, reduction='sum')
 
-            loss_rel_3d = F.binary_cross_entropy(rel_cls_3d, gt_rel_cls, weight=weight)
+            # loss_rel_3d = F.binary_cross_entropy(rel_cls_3d, gt_rel_cls, weight=weight)
         else:
             if self.mconfig.WEIGHT_EDGE == 'DYNAMIC':
                 one_hot_gt_rel = torch.nn.functional.one_hot(gt_rel_cls,num_classes = self.num_rel)
