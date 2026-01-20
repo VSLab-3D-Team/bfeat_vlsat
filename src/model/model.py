@@ -12,8 +12,8 @@ from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
 # from src.model.SGFN_MMG.model_single import Mmgnet
 # from src.model.SGFN_MMG.model_pt import Mmgnet
-# from src.model.SGFN_MMG.modelpt_pp_debias import Mmgnet
-from src.model.SGFN_MMG.modelpt_pp_abl import Mmgnet
+from src.model.SGFN_MMG.modelpt_pp_debias import Mmgnet
+# from src.model.SGFN_MMG.modelpt_pp_abl import Mmgnet
 # from src.model.SGFN_MMG.model_pt_pp import Mmgnet
 # from src.model.SGFN_MMG.modelpt_debias import Mmgnet
 # from src.model.SGFN_MMG.model_crosspt import Mmgnet

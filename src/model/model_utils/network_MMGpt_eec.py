@@ -81,7 +81,7 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             dim_node=dim_node, dim_edge=dim_edge, dim_atten=dim_atten,
             num_heads=num_heads, use_bn=use_bn, attention=attention, use_edge=use_edge, **kwargs)
         
-        # self.condition_edge = ExplicitEdgeConditioningviaObject(dim_node, dim_edge)
+        self.condition_edge = ExplicitEdgeConditioningviaObject(dim_node, dim_edge)
         
         self.prop = build_mlp([dim_node+dim_atten, dim_node+dim_atten, dim_node],
                             do_bn=use_bn, on_last=False)
@@ -99,22 +99,22 @@ class GraphEdgeAttenNetwork(torch.nn.Module):
             src, dst = edge_index[0, i].item(), edge_index[1, i].item()
             edge_dict[(src, dst)] = i
         
-        # edge_conditioned_feature = self.condition_edge(x_i, x_j, edge_feature)
+        edge_conditioned_feature = self.condition_edge(x_i, x_j, edge_feature)
         
         reverse_edge_feature = torch.zeros_like(edge_feature)
         for i in range(edge_index.shape[1]):
             src, dst = edge_index[0, i].item(), edge_index[1, i].item()
             if (dst, src) in edge_dict:
                 reverse_idx = edge_dict[(dst, src)]
-                # reverse_edge_feature[i] = edge_conditioned_feature[reverse_idx]
-                reverse_edge_feature[i] = edge_feature[reverse_idx]
+                reverse_edge_feature[i] = edge_conditioned_feature[reverse_idx]
+                # reverse_edge_feature[i] = edge_feature[reverse_idx]
         
-        # gates = self.edge_gate(edge_conditioned_feature)
-        gates = self.edge_gate(edge_feature)
+        gates = self.edge_gate(edge_conditioned_feature)
+        # gates = self.edge_gate(edge_feature)
         reverse_edge_feature = gates * reverse_edge_feature
 
-        # xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_conditioned_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
-        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
+        xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_conditioned_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
+        # xx, gcn_edge_feature, prob = self.edgeatten(x_i, edge_feature, reverse_edge_feature, x_j, weight, istrain=istrain)
         
         subject_edges = {}
         object_edges = {}

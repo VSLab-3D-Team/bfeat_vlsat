@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import _SingleProcessDataLoaderIter, _MultiProcessingDataLoaderIter
 import numpy as np
+import random
 
 class CustomSingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
     def __init__(self,loader):
@@ -29,8 +30,10 @@ class CustomDataLoader(DataLoader):
         self.config = config
         
     def init_fn(self, worker_id):
-        np.random.seed(self.config.SEED + worker_id)
-        
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed) # self.config.SEED + worker_id
+        random.seed(worker_seed) # self.config.SEED + worker_id
+
     def __iter__(self):
         if self.num_workers == 0:
             return CustomSingleProcessDataLoaderIter(self)
